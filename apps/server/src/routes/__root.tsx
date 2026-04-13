@@ -1,8 +1,8 @@
 import { HeadContent, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
-import { AppSidebar } from "../components/AppSidebar";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "../components/ui/sidebar";
+import { AppSidebar } from "#/components/AppSidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "#/components/ui/sidebar";
 
-import appCss from "../styles.css?url";
+import appCss from "#/styles.css?url";
 
 import type { QueryClient } from "@tanstack/react-query";
 

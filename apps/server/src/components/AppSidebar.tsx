@@ -9,7 +9,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-} from "./ui/sidebar";
+} from "#/components/ui/sidebar";
 
 const navItems = [
   { title: "Home", to: "/", icon: HomeIcon },

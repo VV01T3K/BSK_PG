@@ -1,6 +1,6 @@
 import { hc, type InferResponseType } from "hono/client";
 import type { TtpApp } from "ttp";
-import { env } from "../../env";
+import { env } from "#/env";
 
 const ttpApiBaseUrl = env.VITE_TTP_API_BASE_URL;
 

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { getServerFnUsers } from "../../functions/users";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "#/components/ui/card";
+import { getServerFnUsers } from "#/functions/users";
 
 export const Route = createFileRoute("/demo/tanstack-query-server")({
   component: TanStackQueryServerDemo,

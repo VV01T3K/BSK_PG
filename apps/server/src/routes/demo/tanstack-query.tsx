@@ -1,14 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { getHonoProducts } from "../../integrations/hono/ttp-client";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
+import { getHonoProducts } from "#/api/ttp-client";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "#/components/ui/card";
 
 export const Route = createFileRoute("/demo/tanstack-query")({
   component: TanStackQueryDemo,
 });
 
 function TanStackQueryDemo() {
-  const { data = [], error, isLoading } = useQuery({
+  const {
+    data = [],
+    error,
+    isLoading,
+  } = useQuery({
     queryKey: ["hono-products"],
     queryFn: getHonoProducts,
     initialData: [],
