@@ -1,5 +1,5 @@
 {
-  "projectName": "front",
+  "projectName": "server",
   "mode": "file-router",
   "typescript": true,
   "packageManager": "bun",

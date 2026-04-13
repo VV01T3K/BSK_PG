@@ -1,5 +1,5 @@
 {
-  "name": "front",
+  "name": "server",
   "private": true,
   "type": "module",
   "imports": {
