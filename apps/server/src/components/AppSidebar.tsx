@@ -13,8 +13,8 @@ import {
 
 const navItems = [
   { title: "Home", to: "/", icon: HomeIcon },
-  { title: "Query + Hono", to: "/demo/tanstack-query", icon: ZapIcon },
-  { title: "Query + Server Fn", to: "/demo/tanstack-query-server", icon: ServerIcon },
+  { title: "Query + Hono", to: "/tanstack-query", icon: ZapIcon },
+  { title: "Query + Server Fn", to: "/tanstack-query-server", icon: ServerIcon },
 ] as const;
 
 export function AppSidebar() {

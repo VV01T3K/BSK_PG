@@ -9,86 +9,117 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as DemoTanstackQueryServerRouteImport } from './routes/demo/tanstack-query-server'
-import { Route as DemoTanstackQueryRouteImport } from './routes/demo/tanstack-query'
+import { Route as GuardRouteRouteImport } from './routes/_guard/route'
+import { Route as GuardIndexRouteImport } from './routes/_guard/index'
+import { Route as GuardTanstackQueryServerRouteImport } from './routes/_guard/tanstack-query-server'
+import { Route as GuardTanstackQueryRouteImport } from './routes/_guard/tanstack-query'
 
-const IndexRoute = IndexRouteImport.update({
+const GuardRouteRoute = GuardRouteRouteImport.update({
+  id: '/_guard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GuardIndexRoute = GuardIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => GuardRouteRoute,
 } as any)
-const DemoTanstackQueryServerRoute = DemoTanstackQueryServerRouteImport.update({
-  id: '/demo/tanstack-query-server',
-  path: '/demo/tanstack-query-server',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DemoTanstackQueryRoute = DemoTanstackQueryRouteImport.update({
-  id: '/demo/tanstack-query',
-  path: '/demo/tanstack-query',
-  getParentRoute: () => rootRouteImport,
+const GuardTanstackQueryServerRoute =
+  GuardTanstackQueryServerRouteImport.update({
+    id: '/tanstack-query-server',
+    path: '/tanstack-query-server',
+    getParentRoute: () => GuardRouteRoute,
+  } as any)
+const GuardTanstackQueryRoute = GuardTanstackQueryRouteImport.update({
+  id: '/tanstack-query',
+  path: '/tanstack-query',
+  getParentRoute: () => GuardRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/demo/tanstack-query': typeof DemoTanstackQueryRoute
-  '/demo/tanstack-query-server': typeof DemoTanstackQueryServerRoute
+  '/': typeof GuardIndexRoute
+  '/tanstack-query': typeof GuardTanstackQueryRoute
+  '/tanstack-query-server': typeof GuardTanstackQueryServerRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/demo/tanstack-query': typeof DemoTanstackQueryRoute
-  '/demo/tanstack-query-server': typeof DemoTanstackQueryServerRoute
+  '/tanstack-query': typeof GuardTanstackQueryRoute
+  '/tanstack-query-server': typeof GuardTanstackQueryServerRoute
+  '/': typeof GuardIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/demo/tanstack-query': typeof DemoTanstackQueryRoute
-  '/demo/tanstack-query-server': typeof DemoTanstackQueryServerRoute
+  '/_guard': typeof GuardRouteRouteWithChildren
+  '/_guard/tanstack-query': typeof GuardTanstackQueryRoute
+  '/_guard/tanstack-query-server': typeof GuardTanstackQueryServerRoute
+  '/_guard/': typeof GuardIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/demo/tanstack-query' | '/demo/tanstack-query-server'
+  fullPaths: '/' | '/tanstack-query' | '/tanstack-query-server'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/demo/tanstack-query' | '/demo/tanstack-query-server'
-  id: '__root__' | '/' | '/demo/tanstack-query' | '/demo/tanstack-query-server'
+  to: '/tanstack-query' | '/tanstack-query-server' | '/'
+  id:
+    | '__root__'
+    | '/_guard'
+    | '/_guard/tanstack-query'
+    | '/_guard/tanstack-query-server'
+    | '/_guard/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  DemoTanstackQueryRoute: typeof DemoTanstackQueryRoute
-  DemoTanstackQueryServerRoute: typeof DemoTanstackQueryServerRoute
+  GuardRouteRoute: typeof GuardRouteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
+    '/_guard': {
+      id: '/_guard'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof GuardRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_guard/': {
+      id: '/_guard/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof GuardIndexRouteImport
+      parentRoute: typeof GuardRouteRoute
     }
-    '/demo/tanstack-query-server': {
-      id: '/demo/tanstack-query-server'
-      path: '/demo/tanstack-query-server'
-      fullPath: '/demo/tanstack-query-server'
-      preLoaderRoute: typeof DemoTanstackQueryServerRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_guard/tanstack-query-server': {
+      id: '/_guard/tanstack-query-server'
+      path: '/tanstack-query-server'
+      fullPath: '/tanstack-query-server'
+      preLoaderRoute: typeof GuardTanstackQueryServerRouteImport
+      parentRoute: typeof GuardRouteRoute
     }
-    '/demo/tanstack-query': {
-      id: '/demo/tanstack-query'
-      path: '/demo/tanstack-query'
-      fullPath: '/demo/tanstack-query'
-      preLoaderRoute: typeof DemoTanstackQueryRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_guard/tanstack-query': {
+      id: '/_guard/tanstack-query'
+      path: '/tanstack-query'
+      fullPath: '/tanstack-query'
+      preLoaderRoute: typeof GuardTanstackQueryRouteImport
+      parentRoute: typeof GuardRouteRoute
     }
   }
 }
 
+interface GuardRouteRouteChildren {
+  GuardTanstackQueryRoute: typeof GuardTanstackQueryRoute
+  GuardTanstackQueryServerRoute: typeof GuardTanstackQueryServerRoute
+  GuardIndexRoute: typeof GuardIndexRoute
+}
+
+const GuardRouteRouteChildren: GuardRouteRouteChildren = {
+  GuardTanstackQueryRoute: GuardTanstackQueryRoute,
+  GuardTanstackQueryServerRoute: GuardTanstackQueryServerRoute,
+  GuardIndexRoute: GuardIndexRoute,
+}
+
+const GuardRouteRouteWithChildren = GuardRouteRoute._addFileChildren(
+  GuardRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  DemoTanstackQueryRoute: DemoTanstackQueryRoute,
-  DemoTanstackQueryServerRoute: DemoTanstackQueryServerRoute,
+  GuardRouteRoute: GuardRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

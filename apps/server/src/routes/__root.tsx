@@ -1,6 +1,8 @@
-import { HeadContent, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
-import { AppSidebar } from "#/components/AppSidebar";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "#/components/ui/sidebar";
+import {
+  HeadContent,
+  Scripts,
+  createRootRouteWithContext,
+} from "@tanstack/react-router";
 
 import appCss from "#/styles.css?url";
 
@@ -29,15 +31,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body className="font-sans antialiased">
-        <SidebarProvider>
-          <AppSidebar />
-          <SidebarInset>
-            <header className="flex h-12 items-center border-b px-4">
-              <SidebarTrigger />
-            </header>
-            <div className="flex-1 overflow-auto px-60">{children}</div>
-          </SidebarInset>
-        </SidebarProvider>
+        {children}
         <Scripts />
       </body>
     </html>

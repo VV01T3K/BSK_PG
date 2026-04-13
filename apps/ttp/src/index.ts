@@ -17,6 +17,11 @@ export const app = new Hono()
   .get("/", (c) => {
     return c.text("Hello Hono!");
   })
+  .get("/api/startup", async (c) => {
+    await new Promise((resolve) => setTimeout(resolve, 2_000)); // wait 2s
+
+    return c.json(true); // true -> let through
+  })
   .get("/api/products", (c) => {
     return c.json({ products: demoProducts });
   });

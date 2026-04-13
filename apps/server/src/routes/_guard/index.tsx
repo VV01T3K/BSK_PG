@@ -1,8 +1,9 @@
-import { Link } from "@tanstack/react-router";
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { Button } from "#/components/ui/button";
 
-export const Route = createFileRoute("/")({ component: App });
+export const Route = createFileRoute("/_guard/")({
+  component: App,
+});
 
 function App() {
   return (
@@ -10,10 +11,10 @@ function App() {
       <h1 className="text-2xl font-bold">Demos</h1>
       <div className="flex gap-3">
         <Button asChild>
-          <Link to="/demo/tanstack-query">Query + Hono RPC</Link>
+          <Link to="/tanstack-query">Query + Hono RPC</Link>
         </Button>
         <Button variant="secondary" asChild>
-          <Link to="/demo/tanstack-query-server">Query + Server Fn</Link>
+          <Link to="/tanstack-query-server">Query + Server Fn</Link>
         </Button>
       </div>
     </main>

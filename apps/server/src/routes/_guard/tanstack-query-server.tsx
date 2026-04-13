@@ -3,12 +3,16 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "#/components/ui/card";
 import { getServerFnUsers } from "#/functions/users";
 
-export const Route = createFileRoute("/demo/tanstack-query-server")({
+export const Route = createFileRoute("/_guard/tanstack-query-server")({
   component: TanStackQueryServerDemo,
 });
 
 function TanStackQueryServerDemo() {
-  const { data = [], error, isLoading } = useQuery({
+  const {
+    data = [],
+    error,
+    isLoading,
+  } = useQuery({
     queryKey: ["server-fn-users"],
     queryFn: () => getServerFnUsers(),
     initialData: [],
@@ -19,9 +23,7 @@ function TanStackQueryServerDemo() {
       <Card>
         <CardHeader>
           <CardTitle>TanStack Query + Server Fn</CardTitle>
-          <CardDescription>
-            Fetches users via createServerFn RPC boundary.
-          </CardDescription>
+          <CardDescription>Fetches users via createServerFn.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading && <p className="text-sm text-muted-foreground">Loading...</p>}

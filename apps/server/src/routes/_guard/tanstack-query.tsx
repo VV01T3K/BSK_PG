@@ -9,7 +9,7 @@ import {
   CardDescription,
 } from "#/components/ui/card";
 
-export const Route = createFileRoute("/demo/tanstack-query")({
+export const Route = createFileRoute("/_guard/tanstack-query")({
   component: TanStackQueryDemo,
 });
 
