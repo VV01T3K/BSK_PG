@@ -1,7 +1,8 @@
 import { hc, type InferResponseType } from "hono/client";
 import type { TtpApp } from "../../../../ttp/src/index.ts";
+import { env } from "../../env";
 
-const ttpApiBaseUrl = import.meta.env.VITE_TTP_API_BASE_URL ?? "http://localhost:3001";
+const ttpApiBaseUrl = env.VITE_TTP_API_BASE_URL;
 
 export const ttpClient = hc<TtpApp>(ttpApiBaseUrl);
 
