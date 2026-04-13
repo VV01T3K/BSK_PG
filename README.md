@@ -1,29 +1,29 @@
-# Vite+ Monorepo Starter
+# Bun Monorepo Starter
 
-A starter for creating a Vite+ monorepo.
+A starter for a Bun-managed monorepo.
 
 ## Development
 
-- Check everything is ready:
+- Check the workspace:
 
 ```bash
-vp run ready
+bun run ready
 ```
 
 - Run the tests:
 
 ```bash
-vp run -r test
+bun run test
 ```
 
 - Build the monorepo:
 
 ```bash
-vp run -r build
+bun run build
 ```
 
 - Run the development server:
 
 ```bash
-vp run dev
+bun run dev
 ```

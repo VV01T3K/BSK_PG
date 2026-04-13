@@ -6,7 +6,7 @@ To run this application:
 
 ```bash
 bun install
-bun --bun run dev
+bun run dev
 ```
 
 # Building For Production
@@ -14,7 +14,7 @@ bun --bun run dev
 To build this application for production:
 
 ```bash
-bun --bun run build
+bun run build
 ```
 
 ## Testing
@@ -22,7 +22,7 @@ bun --bun run build
 This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
 
 ```bash
-bun --bun run test
+bun run test
 ```
 
 ## Styling
@@ -43,7 +43,7 @@ If you prefer not to use Tailwind CSS:
 Add components using the latest version of [Shadcn](https://ui.shadcn.com/).
 
 ```bash
-pnpm dlx shadcn@latest add button
+bunx shadcn@latest add button
 ```
 
 ## Routing

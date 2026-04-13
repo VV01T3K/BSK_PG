@@ -7,15 +7,3 @@ npm.package_manager = "bun"
 
 [tools]
 bun = "1.3.12"
-
-
-[hooks]
-preinstall = '''
-    test -f .mise-setup-done && exit 0
-    vp env install
-'''
-postinstall = '''
-    test -f .mise-setup-done && exit 0
-    vp install
-    touch .mise-setup-done
-'''

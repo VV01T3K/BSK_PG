@@ -6,10 +6,11 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "dev": "vp dev --port 3000 --host",
-    "build": "vp build",
-    "preview": "vp preview",
-    "test": "vp test run"
+    "dev": "vite dev --port 3000 --host",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.18",
@@ -43,14 +44,7 @@
     "babel-plugin-react-compiler": "^1.0.0",
     "jsdom": "^29.0.2",
     "typescript": "^6.0.2",
-    "vite": "catalog:",
-    "vite-plus": "catalog:",
-    "vitest": "catalog:"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "lightningcss"
-    ]
+    "vite": "^8.0.8",
+    "vitest": "^4.1.4"
   }
 }
