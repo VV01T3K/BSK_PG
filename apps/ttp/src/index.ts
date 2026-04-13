@@ -1,13 +1,13 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 
-const demoUsers = [
-  { id: 1, name: "Alice" },
-  { id: 2, name: "Bob" },
-  { id: 3, name: "Charlie" },
+const demoProducts = [
+  { id: 1, name: "Keyboard" },
+  { id: 2, name: "Mouse" },
+  { id: 3, name: "Monitor" },
 ];
 
-const app = new Hono()
+export const app = new Hono()
   .use(
     "/api/*",
     cors({
@@ -17,11 +17,10 @@ const app = new Hono()
   .get("/", (c) => {
     return c.text("Hello Hono!");
   })
-  .get("/api/users", (c) => {
-    return c.json({ users: demoUsers });
+  .get("/api/products", (c) => {
+    return c.json({ products: demoProducts });
   });
 
-export { app };
 export type TtpApp = typeof app;
 
 export default {
