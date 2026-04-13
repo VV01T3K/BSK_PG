@@ -1,4 +1,7 @@
 {
+  "files.exclude": {
+    ".mise-setup-done": true
+  },
   "files.watcherExclude": {
     "**/routeTree.gen.ts": true
   },

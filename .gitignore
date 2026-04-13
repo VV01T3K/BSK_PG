@@ -21,6 +21,4 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-# AI agent worktrees
-.claude/worktrees/
+.mise-setup-done
