@@ -5,6 +5,7 @@ import {
   decryptRsaOaepBase64,
   encryptAesGcm,
   encryptLargePayloadForTtp,
+  tamperEnvelope,
   encryptRsaOaepBase64,
   fingerprint,
   generateRsaKeyPair,
@@ -62,19 +63,28 @@ async function decryptSessionKey(user: PrincipalState, encryptedSessionKey: stri
 }
 
 export async function getSecurityDemoState(): Promise<SecurityDemoSnapshot> {
-  await refreshServerState().catch(() => undefined);
+  try {
+    await refreshServerState();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "failed to refresh protected server state";
+    log("server", "state refresh failed", message, "warn");
+  }
   return snapshot();
 }
 
 export async function resetSecurityDemo(): Promise<SecurityDemoSnapshot> {
   clearClientState();
   await parseRpcResponse<ServiceServerSnapshot>(await serviceClient.api.reset.$post());
-  log("user", "demo reset", "cleared browser Client state and protected Server state");
+  await parseRpcResponse<{ ok: boolean }>(await ttpClient.api.reset.$post());
+  log("user", "demo reset", "cleared Client, protected Server, and TTP state");
   await refreshServerState();
   return snapshot();
 }
 
 export async function registerSecurityDemoRoles(): Promise<SecurityDemoSnapshot> {
+  if (state.user || state.server?.registered) {
+    await resetSecurityDemo();
+  }
   state.user = await registerUser();
   state.server = await parseRpcResponse<ServiceServerSnapshot>(await serviceClient.api.server.register.$post());
   state.session = undefined;
@@ -200,10 +210,7 @@ export async function runForgedCertificateAttack(): Promise<SecurityDemoSnapshot
 export async function runMitmTamperAttack(): Promise<SecurityDemoSnapshot> {
   const session = requireSession();
   const envelope = await encryptAesGcm(session.sessionId, session.userSessionKey, "Tamper check message");
-  const tampered: EncryptedEnvelope = {
-    ...envelope,
-    ciphertext: btoa(`${envelope.ciphertext}.`),
-  };
+  const tampered = tamperEnvelope(envelope);
 
   try {
     await parseRpcResponse(

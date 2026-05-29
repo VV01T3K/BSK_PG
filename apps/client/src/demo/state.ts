@@ -94,5 +94,8 @@ export function requireSession(): ClientSessionState {
   if (!state.session) {
     throw new Error("session is not established yet");
   }
+  if (Date.parse(state.session.expiresAt) <= Date.now()) {
+    throw new Error("session has expired");
+  }
   return state.session;
 }

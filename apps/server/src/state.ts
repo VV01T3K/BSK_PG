@@ -47,9 +47,16 @@ export function requireRegisteredServer() {
   }
 }
 
+function assertSessionNotExpired() {
+  if (state.sessionExpiresAt && Date.parse(state.sessionExpiresAt) <= Date.now()) {
+    throw new Error("session has expired");
+  }
+}
+
 export function requireSessionKey(): string {
   if (!state.sessionId || !state.sessionKey) {
     throw new Error("service server has no accepted session key");
   }
+  assertSessionNotExpired();
   return state.sessionKey;
 }
