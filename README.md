@@ -1,29 +1,63 @@
-# Bun Monorepo Starter
+# BSK PG Trusted Third Party Demo
 
-A starter for a Bun-managed monorepo.
+Three-application Client, Server, and Trusted Third Party demo for the Security of Computer Systems project.
 
 ## Development
 
-- Check the workspace:
+Install dependencies:
+
+```bash
+bun install
+```
+
+Check the workspace:
 
 ```bash
 bun run ready
 ```
 
-- Run the tests:
+Run the local demo:
+
+```bash
+bun run dev
+```
+
+Open the Client UI at `http://localhost:3000`. The protected Server API listens on `http://localhost:3002`, and the TTP API listens on `http://localhost:3001`.
+
+Run tests only:
 
 ```bash
 bun run test
 ```
 
-- Build the monorepo:
+Build the monorepo:
 
 ```bash
 bun run build
 ```
 
-- Run the development server:
+## Docker Compose Demo
+
+Docker Compose is used as the final VM-like environment:
 
 ```bash
-bun run dev
+docker compose up --build
+```
+
+Services:
+
+- `client`: TanStack Start SPA Client application on port `3000`
+- `server`: protected service Server application on port `3002`
+- `ttp`: Trusted Third Party authority on port `3001`
+
+## Documentation
+
+- Roadmap: `docs/implementation-roadmap.md`
+- Report skeleton: `docs/final-report-skeleton.md`
+- Doxygen config: `Doxyfile`
+
+Generate Doxygen output with:
+
+```bash
+doxygen Doxyfile
 ```

@@ -1,30 +1,21 @@
-import { Hono } from "hono";
-import { cors } from "hono/cors";
+export { app } from "./routes.js";
+export { resetTtpStateForTests } from "./state.js";
+export type {
+  EventLogEntry,
+  HybridEncryptedEnvelope,
+  PublicKeySet,
+  RegisterRequest,
+  RegisterResponse,
+  Role,
+  ServerAuthRequest,
+  ServerAuthResponse,
+  SessionCloseRequest,
+  UserAuthMaterial,
+  UserAuthRequest,
+  UserAuthResponse,
+} from "./types.js";
 
-const demoProducts = [
-  { id: 1, name: "Keyboard" },
-  { id: 2, name: "Mouse" },
-  { id: 3, name: "Monitor" },
-];
-
-export const app = new Hono()
-  .use(
-    "/api/*",
-    cors({
-      origin: "http://localhost:3000",
-    }),
-  )
-  .get("/", (c) => {
-    return c.text("Hello Hono!");
-  })
-  .get("/api/startup", async (c) => {
-    await new Promise((resolve) => setTimeout(resolve, 2_000)); // wait 2s
-
-    return c.json(true); // true -> let through
-  })
-  .get("/api/products", (c) => {
-    return c.json({ products: demoProducts });
-  });
+import { app } from "./routes.js";
 
 export type TtpApp = typeof app;
 

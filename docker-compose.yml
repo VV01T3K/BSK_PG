@@ -1,0 +1,33 @@
+services:
+  ttp:
+    build:
+      context: .
+    command: sh -lc "cd apps/ttp && bun run dev"
+    ports:
+      - "3001:3001"
+
+  client:
+    build:
+      context: .
+    command: sh -lc "cd apps/client && bun run dev"
+    environment:
+      TTP_API_BASE_URL: http://ttp:3001
+      SERVICE_API_BASE_URL: http://server:3002
+      VITE_TTP_API_BASE_URL: http://localhost:3001
+      VITE_SERVICE_API_BASE_URL: http://localhost:3002
+    ports:
+      - "3000:3000"
+    depends_on:
+      - ttp
+      - server
+
+  server:
+    build:
+      context: .
+    command: sh -lc "cd apps/server && bun run dev"
+    environment:
+      TTP_API_BASE_URL: http://ttp:3001
+    ports:
+      - "3002:3002"
+    depends_on:
+      - ttp

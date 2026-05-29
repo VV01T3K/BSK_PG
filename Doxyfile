@@ -1,0 +1,13 @@
+PROJECT_NAME           = "BSK PG Three-Application Trusted Third Party Demo"
+OUTPUT_DIRECTORY       = docs/doxygen-output
+INPUT                  = apps README.md docs/implementation-roadmap.md
+RECURSIVE              = YES
+EXCLUDE                = node_modules apps/client/node_modules apps/server/node_modules apps/ttp/node_modules apps/client/dist apps/server/dist apps/ttp/dist
+EXCLUDE_PATTERNS       = */node_modules/* */dist/* */.bun/*
+FILE_PATTERNS          = *.ts *.tsx *.md
+EXTRACT_ALL            = YES
+QUIET                  = YES
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+MARKDOWN_SUPPORT       = YES
+HAVE_DOT               = NO
