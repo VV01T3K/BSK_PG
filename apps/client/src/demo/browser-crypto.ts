@@ -122,6 +122,19 @@ export async function encryptAesGcm(sessionId: string, sessionKey: string, plain
   };
 }
 
+/** Flip one ciphertext byte to simulate in-transit tampering (GCM auth must fail). */
+export function tamperEnvelope(envelope: EncryptedEnvelope): EncryptedEnvelope {
+  const bytes = new Uint8Array(base64ToArrayBuffer(envelope.ciphertext));
+  if (bytes.length === 0) {
+    throw new Error("cannot tamper empty ciphertext");
+  }
+  bytes[0] ^= 0xff;
+  return {
+    ...envelope,
+    ciphertext: arrayBufferToBase64(bytes.buffer),
+  };
+}
+
 export async function decryptAesGcm(sessionKey: string, envelope: EncryptedEnvelope): Promise<string> {
   const rawKey = base64ToArrayBuffer(sessionKey);
   const key = await crypto.subtle.importKey("raw", rawKey, { name: "AES-GCM" }, false, ["decrypt"]);

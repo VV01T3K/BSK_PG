@@ -189,6 +189,19 @@ describe("TTP authority", () => {
     expect(await response.json()).toMatchObject({ ok: false });
   });
 
+  it("resets principals and sessions", async () => {
+    await registerPrincipal("user");
+    const response = await app.request("/api/reset", { method: "POST" });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      ok: true,
+      registeredPrincipals: 0,
+      activeSessions: 0,
+    });
+    const health = await app.request("/api/health");
+    expect(await health.json()).toMatchObject({ registeredPrincipals: 0, activeSessions: 0 });
+  });
+
   it("closes sessions after successful authentication", async () => {
     const user = await registerPrincipal("user");
     const server = await registerPrincipal("server");

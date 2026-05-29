@@ -3,12 +3,14 @@ import { app as serviceApp, resetServiceServerStateForTests } from "server";
 import { app as ttpApp, resetTtpStateForTests } from "ttp";
 import {
   authenticateSecurityDemoSession,
+  closeSecurityDemoSession,
   exchangeEncryptedServiceMessage,
   registerSecurityDemoRoles,
   resetSecurityDemo,
   runForgedCertificateAttack,
   runMitmTamperAttack,
 } from "./actions";
+import { getTtpHealth } from "#/api/ttp-client";
 
 const originalFetch = globalThis.fetch;
 
@@ -74,5 +76,19 @@ describe("browser-style Client security flow", () => {
 
     snapshot = await runMitmTamperAttack();
     expect(snapshot.mitmRejected).toBe(true);
+
+    snapshot = await closeSecurityDemoSession();
+    expect(snapshot.sessionEstablished).toBe(false);
+
+    const healthBeforeReset = await getTtpHealth();
+    expect(healthBeforeReset.registeredPrincipals).toBe(2);
+
+    snapshot = await resetSecurityDemo();
+    expect(snapshot.userRegistered).toBe(false);
+    expect(snapshot.serverRegistered).toBe(false);
+
+    const healthAfterReset = await getTtpHealth();
+    expect(healthAfterReset.registeredPrincipals).toBe(0);
+    expect(healthAfterReset.activeSessions).toBe(0);
   });
 });

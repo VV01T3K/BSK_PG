@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { issueCertificate, validateCertificate } from "./certificates.js";
 import { ca, decryptHybridWithTtpPrivateKey, decryptWithTtpPrivateKey, encryptForPublicKey, newRandomHex, newSessionKey, RSA_BITS } from "./crypto.js";
-import { log, logs, principalKey, principals, sessions } from "./state.js";
+import { log, logs, principalKey, principals, resetTtpStateForTests, sessions } from "./state.js";
 import type {
   RegisterRequest,
   RegisterResponse,
@@ -49,6 +49,11 @@ export const app = new Hono()
     });
   })
   .get("/api/logs", (c) => c.json({ logs }))
+  .post("/api/reset", (c) => {
+    resetTtpStateForTests();
+    log("ttp", "authority reset", "cleared principals and sessions");
+    return c.json({ ok: true, registeredPrincipals: 0, activeSessions: 0 });
+  })
   .post("/api/register", async (c) => {
     try {
       const payload = (await c.req.json()) as RegisterRequest;

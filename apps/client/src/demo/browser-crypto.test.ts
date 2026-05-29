@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { decryptAesGcm, decryptRsaOaepBase64, encryptAesGcm, encryptRsaOaepBase64, generateRsaKeyPair, sha256Hex } from "./browser-crypto";
+import {
+  decryptAesGcm,
+  decryptRsaOaepBase64,
+  encryptAesGcm,
+  encryptRsaOaepBase64,
+  generateRsaKeyPair,
+  sha256Hex,
+  tamperEnvelope,
+} from "./browser-crypto";
 
 describe("browser crypto helpers", () => {
   it("hashes with SHA-256", async () => {
@@ -17,5 +25,14 @@ describe("browser crypto helpers", () => {
     const sessionKey = btoa(String.fromCharCode(...rawKey));
     const envelope = await encryptAesGcm("session-1", sessionKey, "service payload");
     await expect(decryptAesGcm(sessionKey, envelope)).resolves.toBe("service payload");
+  });
+
+  it("tamper helper corrupts ciphertext without breaking base64", async () => {
+    const rawKey = crypto.getRandomValues(new Uint8Array(32));
+    const sessionKey = btoa(String.fromCharCode(...rawKey));
+    const envelope = await encryptAesGcm("session-1", sessionKey, "service payload");
+    const tampered = tamperEnvelope(envelope);
+    expect(tampered.ciphertext).not.toBe(envelope.ciphertext);
+    await expect(decryptAesGcm(sessionKey, tampered)).rejects.toThrow();
   });
 });
