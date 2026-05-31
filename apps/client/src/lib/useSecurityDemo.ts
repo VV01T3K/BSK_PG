@@ -1,17 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { serviceQuery } from "#/api";
-import {
-  authenticateSecurityDemoSession,
-  closeSecurityDemoSession,
-  exchangeEncryptedServiceMessage,
-  registerSecurityDemoRoles,
-  resetSecurityDemo,
-  runForgedCertificateAttack,
-} from "./actions";
+import { securityDemoFlow } from "./security-demo-flow";
 import { clientIdentity } from "./state";
 
 const CLIENT_IDENTITY_KEY = ["client-identity"] as const;
 
+/** React adapter for the demo page: queries current state and exposes protocol steps as mutations. */
 export function useSecurityDemo() {
   const queryClient = useQueryClient();
   const serverQuery = useQuery(serviceQuery.state.queryOptions());
@@ -23,13 +17,13 @@ export function useSecurityDemo() {
       queryClient.invalidateQueries({ queryKey: CLIENT_IDENTITY_KEY }),
     ]);
 
-  const forged = useMutation({ mutationFn: runForgedCertificateAttack });
-  const register = useMutation({ mutationFn: registerSecurityDemoRoles, onSuccess: invalidate });
-  const authenticate = useMutation({ mutationFn: authenticateSecurityDemoSession, onSuccess: invalidate });
-  const exchange = useMutation({ mutationFn: exchangeEncryptedServiceMessage, onSuccess: invalidate });
-  const closeSession = useMutation({ mutationFn: closeSecurityDemoSession, onSuccess: invalidate });
+  const forged = useMutation({ mutationFn: securityDemoFlow.verifyForgedCertificateIsRejected });
+  const register = useMutation({ mutationFn: securityDemoFlow.registerPrincipals, onSuccess: invalidate });
+  const authenticate = useMutation({ mutationFn: securityDemoFlow.authenticateSession, onSuccess: invalidate });
+  const exchange = useMutation({ mutationFn: securityDemoFlow.sendEncryptedServiceRequest, onSuccess: invalidate });
+  const closeSession = useMutation({ mutationFn: securityDemoFlow.closeSession, onSuccess: invalidate });
   const reset = useMutation({
-    mutationFn: resetSecurityDemo,
+    mutationFn: securityDemoFlow.resetEnvironment,
     onSuccess: async () => {
       forged.reset();
       await invalidate();

@@ -1,12 +1,8 @@
 import type { RsaPair } from "@bsk/crypto";
 
-export type { ServiceServerSnapshot } from "server";
-
-export type RsaKeyPair = RsaPair;
-
 export interface PrincipalState {
   id: string;
-  exchangeKeyPair: RsaKeyPair;
+  exchangeKeyPair: RsaPair;
   certificatePem: string;
 }
 
@@ -14,9 +10,4 @@ export interface ClientSessionState {
   sessionId: string;
   userSessionKey: string;
   expiresAt: string;
-}
-
-export interface AttackResult {
-  rejected: boolean;
-  message: string;
 }
