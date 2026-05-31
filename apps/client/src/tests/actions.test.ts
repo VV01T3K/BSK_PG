@@ -9,8 +9,8 @@ import {
   resetSecurityDemo,
   runForgedCertificateAttack,
   runMitmTamperAttack,
-} from "./actions";
-import { clientIdentity } from "./state";
+} from "../demo/actions.ts";
+import { clientIdentity } from "../demo/state.ts";
 
 const originalFetch = globalThis.fetch;
 
