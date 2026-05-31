@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { cn } from "#/integrations/shadcn/utils";
+import { cn } from "#/components/utils";
 
 type ButtonVariant = "default" | "outline" | "secondary" | "ghost" | "destructive";
 
