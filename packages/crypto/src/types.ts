@@ -27,8 +27,6 @@ export interface RsaDecryptor {
 // Payloads
 // ===========================
 
-export type UUID = `${string}-${string}-${string}-${string}-${string}`;
-
 export type AesGcmPayload = {
   iv: string;
   ciphertext: string;
