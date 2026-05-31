@@ -70,10 +70,10 @@ describe("browser-style Client security flow", () => {
     expect(snapshot.lastEncryptedRequest?.ciphertext).toBeTruthy();
     expect(snapshot.lastEncryptedResponse?.ciphertext).toBeTruthy();
 
-    snapshot = await runForgedCertificateAttack();
-    expect(snapshot.forgedCertificateRejected).toBe(true);
+    const forgedResult = await runForgedCertificateAttack();
+    expect(forgedResult.rejected).toBe(true);
 
-    snapshot = await runMitmTamperAttack();
-    expect(snapshot.mitmRejected).toBe(true);
+    const mitmResult = await runMitmTamperAttack();
+    expect(mitmResult.rejected).toBe(true);
   });
 });

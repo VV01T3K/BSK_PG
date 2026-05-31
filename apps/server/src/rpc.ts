@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createRpcClient } from "@bsk/rpc/client";
 import { ORPCError, os, type } from "@orpc/server";
 import { decryptAesGcm, decryptWithPrivateKey, encryptAesGcm, encryptForTtp, fingerprint, generateRsaPair, sha256 } from "./crypto.js";
-import { log, logs, requireRegisteredServer, requireSessionKey, resetServiceServerStateForTests, snapshot, state } from "./state.js";
+import { log, readLogs, requireRegisteredServer, requireSessionKey, resetServiceServerStateForTests, snapshot, state } from "./state.js";
 import type { EncryptedEnvelope, ServiceServerSnapshot } from "./types.js";
 import type { TtpRouter } from "ttp";
 
@@ -24,7 +24,7 @@ export const serviceRouter = {
 
   state: os.handler(() => snapshot()),
 
-  logs: os.handler(() => ({ logs })),
+  logs: os.handler(() => ({ logs: readLogs() })),
 
   reset: os.handler(() => {
     resetServiceServerStateForTests();

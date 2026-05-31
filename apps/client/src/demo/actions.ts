@@ -1,21 +1,27 @@
 import { service, ttp } from "#/api";
 import {
-  decryptAesGcm,
   decryptRsaOaepBase64,
   encryptAesGcm,
   encryptLargePayloadForTtp,
   encryptRsaOaepBase64,
-  fingerprint,
   generateRsaKeyPair,
   randomIdSeed,
   sha256Hex,
 } from "./browser-crypto";
-import { clearClientState, log, requireServer, requireSession, requireUser, snapshot, state } from "./state";
-import type { EncryptedEnvelope, PrincipalState, SecurityDemoSnapshot, ServiceServerSnapshot } from "./types";
+import { clearClientState, requireSession, requireUser, snapshot, state } from "./state";
+import type { AttackResult, EncryptedEnvelope, PrincipalState, SecurityDemoSnapshot, ServiceServerSnapshot } from "./types";
 
 async function getTtpPublicKey(): Promise<string> {
   const payload = await ttp.publicKey();
   return payload.publicKeyPem;
+}
+
+async function requireServer(): Promise<ServiceServerSnapshot & { serverId: string; certificatePem: string }> {
+  const server = await service.state();
+  if (!server.registered || !server.serverId || !server.certificatePem) {
+    throw new Error("protected service server is not registered yet");
+  }
+  return server as ServiceServerSnapshot & { serverId: string; certificatePem: string };
 }
 
 async function registerUser(): Promise<PrincipalState> {
@@ -31,18 +37,12 @@ async function registerUser(): Promise<PrincipalState> {
       exchangePublicKeyPem: exchangeKeyPair.publicKeyPem,
     },
   });
-  log("user", "registered with TTP", `certificate ${await fingerprint(registration.certificatePem)}`);
   return {
     id: registration.subjectId,
     exchangeKeyPair,
     certificatePem: registration.certificatePem,
     issuedAt: registration.issuedAt,
   };
-}
-
-async function refreshServerState(): Promise<ServiceServerSnapshot> {
-  state.server = await service.state();
-  return state.server;
 }
 
 async function decryptSessionKey(user: PrincipalState, encryptedSessionKey: string): Promise<{ sessionId: string; sessionKey: string }> {
@@ -53,37 +53,29 @@ async function decryptSessionKey(user: PrincipalState, encryptedSessionKey: stri
 }
 
 export async function getSecurityDemoState(): Promise<SecurityDemoSnapshot> {
-  await refreshServerState().catch(() => undefined);
-  return snapshot();
+  const server = await service.state().catch(() => undefined);
+  return snapshot(server);
 }
 
 export async function resetSecurityDemo(): Promise<SecurityDemoSnapshot> {
   clearClientState();
-  await service.reset();
-  log("user", "demo reset", "cleared browser Client state and protected Server state");
-  await refreshServerState();
-  return snapshot();
+  const server = await service.reset();
+  return snapshot(server);
 }
 
 export async function registerSecurityDemoRoles(): Promise<SecurityDemoSnapshot> {
   state.user = await registerUser();
-  state.server = await service.server.register();
+  const server = await service.server.register();
   state.session = undefined;
-  state.forgedCertificateRejected = false;
-  state.forgedCertificateMessage = undefined;
-  state.mitmRejected = false;
-  state.mitmMessage = undefined;
-  log("server", "service server registered", `server ${state.server.serverId?.slice(0, 12)}`);
-  return snapshot();
+  return snapshot(server);
 }
 
 export async function authenticateSecurityDemoSession(): Promise<SecurityDemoSnapshot> {
   const user = requireUser();
-  const server = requireServer();
+  const server = await requireServer();
   const requestId = crypto.randomUUID();
 
   await service.server.authenticate({ requestId });
-  log("server", "server authenticated", `request ${requestId}`);
 
   const ttpPublicKeyPem = await getTtpPublicKey();
   const authMaterial = {
@@ -113,9 +105,7 @@ export async function authenticateSecurityDemoSession(): Promise<SecurityDemoSna
     userSessionKey: userSession.sessionKey,
     expiresAt: userAuth.expiresAt,
   };
-  await refreshServerState();
-  log("ttp", "session accepted", `AES-256 key distributed to User and Server for ${userAuth.sessionId}`);
-  return snapshot();
+  return snapshot(await service.state());
 }
 
 export async function exchangeEncryptedServiceMessage(): Promise<SecurityDemoSnapshot> {
@@ -123,24 +113,15 @@ export async function exchangeEncryptedServiceMessage(): Promise<SecurityDemoSna
   const user = requireUser();
   const requestPlaintext = `User ${user.id.slice(0, 12)} requests the protected grade-summary service.`;
   const encryptedRequest = await encryptAesGcm(session.sessionId, session.userSessionKey, requestPlaintext);
-  const serviceResponse = await service.service.exchange({
+  await service.service.exchange({
     envelope: encryptedRequest,
   });
-  const userPlaintext = await decryptAesGcm(session.userSessionKey, serviceResponse.envelope);
-
-  state.lastPlainRequest = requestPlaintext;
-  state.lastPlainResponse = userPlaintext;
-  state.lastEncryptedRequest = encryptedRequest;
-  state.lastEncryptedResponse = serviceResponse.envelope;
-  await refreshServerState();
-  log("user", "encrypted request sent", `session ${session.sessionId}`);
-  log("server", "encrypted response received", `session ${session.sessionId}`);
-  return snapshot();
+  return snapshot(await service.state());
 }
 
-export async function runForgedCertificateAttack(): Promise<SecurityDemoSnapshot> {
+export async function runForgedCertificateAttack(): Promise<AttackResult> {
   const user = requireUser();
-  const server = requireServer();
+  const server = await requireServer();
   const ttpPublicKeyPem = await getTtpPublicKey();
 
   try {
@@ -158,15 +139,11 @@ export async function runForgedCertificateAttack(): Promise<SecurityDemoSnapshot
     });
     throw new Error("forged certificate was unexpectedly accepted");
   } catch (error) {
-    const message = error instanceof Error ? error.message : "forged certificate rejected";
-    state.forgedCertificateRejected = true;
-    state.forgedCertificateMessage = message;
-    log("ttp", "forged certificate rejected", message, "warn");
-    return snapshot();
+    return { rejected: true, message: error instanceof Error ? error.message : "forged certificate rejected" };
   }
 }
 
-export async function runMitmTamperAttack(): Promise<SecurityDemoSnapshot> {
+export async function runMitmTamperAttack(): Promise<AttackResult> {
   const session = requireSession();
   const envelope = await encryptAesGcm(session.sessionId, session.userSessionKey, "Tamper check message");
   const tampered: EncryptedEnvelope = {
@@ -178,12 +155,7 @@ export async function runMitmTamperAttack(): Promise<SecurityDemoSnapshot> {
     await service.service.exchange({ envelope: tampered });
     throw new Error("tampered ciphertext was unexpectedly accepted");
   } catch (error) {
-    const message = error instanceof Error ? error.message : "tampered ciphertext rejected";
-    state.mitmRejected = true;
-    state.mitmMessage = message;
-    await refreshServerState();
-    log("server", "MITM tamper rejected", "AES-GCM authentication tag verification failed", "warn");
-    return snapshot();
+    return { rejected: true, message: error instanceof Error ? error.message : "tampered ciphertext rejected" };
   }
 }
 
@@ -192,7 +164,5 @@ export async function closeSecurityDemoSession(): Promise<SecurityDemoSnapshot> 
   await ttp.session.close({ sessionId: session.sessionId });
   await service.server.closeSession();
   state.session = undefined;
-  await refreshServerState();
-  log("ttp", "session closed", session.sessionId);
-  return snapshot();
+  return snapshot(await service.state());
 }

@@ -1,4 +1,4 @@
-import type { EventLogEntry } from "ttp";
+import { createFileLogger, type EventLogEntry } from "@bsk/rpc/log";
 import { fingerprint, type RsaPair } from "./crypto.js";
 import type { EncryptedEnvelope, ServiceServerSnapshot } from "./types.js";
 
@@ -17,24 +17,20 @@ type ServiceServerState = {
 };
 
 export const state: ServiceServerState = {};
-export const logs: EventLogEntry[] = [];
+
+const logger = createFileLogger("server.log");
+
+export const readLogs = logger.readLogs;
 
 export function log(event: string, details: string, level: EventLogEntry["level"] = "info") {
-  logs.unshift({
-    timestamp: new Date().toISOString(),
-    actor: "server",
-    level,
-    event,
-    details,
-  });
-  logs.splice(80);
+  logger.log("server", event, details, level);
 }
 
 export function resetServiceServerStateForTests() {
   for (const key of Object.keys(state) as Array<keyof ServiceServerState>) {
     delete state[key];
   }
-  logs.length = 0;
+  logger.reset();
 }
 
 export function snapshot(): ServiceServerSnapshot {
@@ -51,7 +47,6 @@ export function snapshot(): ServiceServerSnapshot {
     lastPlainResponse: state.lastPlainResponse,
     lastEncryptedRequest: state.lastEncryptedRequest,
     lastEncryptedResponse: state.lastEncryptedResponse,
-    logs,
   };
 }
 

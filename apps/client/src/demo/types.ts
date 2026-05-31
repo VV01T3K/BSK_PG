@@ -1,5 +1,4 @@
 import type { EncryptedEnvelope } from "server";
-import type { EventLogEntry } from "ttp";
 export type { EncryptedEnvelope, ServiceServerSnapshot } from "server";
 
 export interface RsaKeyPair {
@@ -34,9 +33,9 @@ export interface SecurityDemoSnapshot {
   lastPlainResponse?: string;
   lastEncryptedRequest?: EncryptedEnvelope;
   lastEncryptedResponse?: EncryptedEnvelope;
-  forgedCertificateRejected: boolean;
-  forgedCertificateMessage?: string;
-  mitmRejected: boolean;
-  mitmMessage?: string;
-  logs: EventLogEntry[];
+}
+
+export interface AttackResult {
+  rejected: boolean;
+  message: string;
 }

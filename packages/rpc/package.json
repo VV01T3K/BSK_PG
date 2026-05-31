@@ -4,7 +4,8 @@
   "type": "module",
   "exports": {
     "./client": "./src/client.ts",
-    "./server": "./src/server.ts"
+    "./server": "./src/server.ts",
+    "./log": "./src/log.ts"
   },
   "dependencies": {
     "@orpc/client": "^1.14.4",

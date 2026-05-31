@@ -1,7 +1,7 @@
 import { ORPCError, os, type } from "@orpc/server";
 import { issueCertificate, validateCertificate } from "./certificates.js";
 import { ca, decryptHybridWithTtpPrivateKey, decryptWithTtpPrivateKey, encryptForPublicKey, newRandomHex, newSessionKey, RSA_BITS } from "./crypto.js";
-import { log, logs, principalKey, principals, sessions } from "./state.js";
+import { log, principalKey, principals, readLogs, sessions } from "./state.js";
 import type { PrincipalRecord, Role } from "./types.js";
 
 const SESSION_TTL_MS = 15 * 60 * 1000;
@@ -43,7 +43,7 @@ export const ttpRouter = {
     keyLength: RSA_BITS,
   })),
 
-  logs: os.handler(() => ({ logs })),
+  logs: os.handler(() => ({ logs: readLogs() })),
 
   register: os.input(type<RegisterInput>()).handler(({ input }) => {
     try {

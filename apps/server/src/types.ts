@@ -1,5 +1,3 @@
-import type { EventLogEntry } from "ttp";
-
 export interface EncryptedEnvelope {
   sessionId: string;
   iv: string;
@@ -20,5 +18,4 @@ export interface ServiceServerSnapshot {
   lastPlainResponse?: string;
   lastEncryptedRequest?: EncryptedEnvelope;
   lastEncryptedResponse?: EncryptedEnvelope;
-  logs: EventLogEntry[];
 }

@@ -51,16 +51,24 @@ function SecurityDemoDashboard() {
     ]);
   };
 
+  const forgedMutation = useMutation({ mutationFn: () => runForgedCertificateAttack(), onSuccess: invalidate });
+  const mitmMutation = useMutation({ mutationFn: () => runMitmTamperAttack(), onSuccess: invalidate });
+
   const registerMutation = useMutation({ mutationFn: () => registerSecurityDemoRoles(), onSuccess: invalidate });
   const authMutation = useMutation({ mutationFn: () => authenticateSecurityDemoSession(), onSuccess: invalidate });
   const exchangeMutation = useMutation({
     mutationFn: () => exchangeEncryptedServiceMessage(),
     onSuccess: invalidate,
   });
-  const forgedMutation = useMutation({ mutationFn: () => runForgedCertificateAttack(), onSuccess: invalidate });
-  const mitmMutation = useMutation({ mutationFn: () => runMitmTamperAttack(), onSuccess: invalidate });
   const closeMutation = useMutation({ mutationFn: () => closeSecurityDemoSession(), onSuccess: invalidate });
-  const resetMutation = useMutation({ mutationFn: () => resetSecurityDemo(), onSuccess: invalidate });
+  const resetMutation = useMutation({
+    mutationFn: () => resetSecurityDemo(),
+    onSuccess: async () => {
+      forgedMutation.reset();
+      mitmMutation.reset();
+      await invalidate();
+    },
+  });
 
   const state = stateQuery.data;
   const busy =
@@ -159,7 +167,7 @@ function SecurityDemoDashboard() {
         <StatusCard
           title="4. Attacks"
           description="Show forged certificate and MITM/tamper rejection."
-          complete={Boolean(state?.forgedCertificateRejected && state.mitmRejected)}
+          complete={forgedMutation.data?.rejected === true && mitmMutation.data?.rejected === true}
           icon={<ShieldAlertIcon />}
           action={
             <div className="flex flex-wrap gap-2">
@@ -218,37 +226,15 @@ function SecurityDemoDashboard() {
         </Card>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
+      <section className="grid gap-4">
         <Card className="rounded-lg">
           <CardHeader>
             <CardTitle className="text-base">Attack Results</CardTitle>
             <CardDescription>Both failures are required demonstration evidence.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <AttackResult label="Forged certificate" ok={state?.forgedCertificateRejected} message={state?.forgedCertificateMessage} />
-            <AttackResult label="MITM tamper" ok={state?.mitmRejected} message={state?.mitmMessage} />
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-lg">
-          <CardHeader>
-            <CardTitle className="text-base">Timestamped Event Log</CardTitle>
-            <CardDescription>Client, protected Server, and TTP outcomes returned to the UI.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="max-h-80 space-y-2 overflow-auto pr-1 text-sm">
-              {(state?.logs ?? []).map((entry) => (
-                <div key={`${entry.timestamp}-${entry.event}`} className="grid gap-1 rounded-md border p-3 md:grid-cols-[10rem_5rem_1fr]">
-                  <span className="font-mono text-xs text-muted-foreground">{new Date(entry.timestamp).toLocaleTimeString()}</span>
-                  <span className="text-xs font-medium uppercase text-muted-foreground">{entry.actor}</span>
-                  <span>
-                    <span className={entry.level === "warn" ? "text-yellow-300" : "text-foreground"}>{entry.event}</span>
-                    <span className="text-muted-foreground"> - {entry.details}</span>
-                  </span>
-                </div>
-              ))}
-              {!state?.logs?.length && <p className="text-muted-foreground">No events yet.</p>}
-            </div>
+            <AttackResult label="Forged certificate" ok={forgedMutation.data?.rejected} message={forgedMutation.data?.message} />
+            <AttackResult label="MITM tamper" ok={mitmMutation.data?.rejected} message={mitmMutation.data?.message} />
           </CardContent>
         </Card>
       </section>

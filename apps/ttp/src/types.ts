@@ -1,13 +1,5 @@
 export type Role = "user" | "server";
 
-export interface EventLogEntry {
-  timestamp: string;
-  actor: "ttp" | "user" | "server";
-  level: "info" | "warn" | "error";
-  event: string;
-  details: string;
-}
-
 export interface PrincipalRecord {
   role: Role;
   subjectId: string;
