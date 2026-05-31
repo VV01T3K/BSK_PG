@@ -8,8 +8,8 @@ import {
   registerSecurityDemoRoles,
   resetSecurityDemo,
   runForgedCertificateAttack,
-} from "../demo/actions";
-import { clientIdentity } from "../demo/state";
+} from "../lib/actions";
+import { clientIdentity } from "../lib/state";
 
 const originalFetch = globalThis.fetch;
 
