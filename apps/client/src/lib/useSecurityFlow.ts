@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { serviceQuery } from "#/api";
-import { securityDemoFlow } from "./security-demo-flow";
+import { securityFlow } from "./security-flow";
 import { clientIdentity } from "./state";
 
 const CLIENT_IDENTITY_KEY = ["client-identity"] as const;
 
-/** React adapter for the demo page: queries current state and exposes protocol steps as mutations. */
-export function useSecurityDemo() {
+/** React adapter for the security flow page: queries current state and exposes protocol steps as mutations. */
+export function useSecurityFlow() {
   const queryClient = useQueryClient();
   const serverQuery = useQuery(serviceQuery.state.queryOptions());
   const identityQuery = useQuery({ queryKey: CLIENT_IDENTITY_KEY, queryFn: clientIdentity });
@@ -17,13 +17,13 @@ export function useSecurityDemo() {
       queryClient.invalidateQueries({ queryKey: CLIENT_IDENTITY_KEY }),
     ]);
 
-  const forged = useMutation({ mutationFn: securityDemoFlow.verifyForgedCertificateIsRejected });
-  const register = useMutation({ mutationFn: securityDemoFlow.registerPrincipals, onSuccess: invalidate });
-  const authenticate = useMutation({ mutationFn: securityDemoFlow.authenticateSession, onSuccess: invalidate });
-  const exchange = useMutation({ mutationFn: securityDemoFlow.sendEncryptedServiceRequest, onSuccess: invalidate });
-  const closeSession = useMutation({ mutationFn: securityDemoFlow.closeSession, onSuccess: invalidate });
+  const forged = useMutation({ mutationFn: securityFlow.verifyForgedCertificateIsRejected });
+  const register = useMutation({ mutationFn: securityFlow.registerPrincipals, onSuccess: invalidate });
+  const authenticate = useMutation({ mutationFn: securityFlow.authenticateSession, onSuccess: invalidate });
+  const exchange = useMutation({ mutationFn: securityFlow.sendEncryptedServiceRequest, onSuccess: invalidate });
+  const closeSession = useMutation({ mutationFn: securityFlow.closeSession, onSuccess: invalidate });
   const reset = useMutation({
-    mutationFn: securityDemoFlow.resetEnvironment,
+    mutationFn: securityFlow.resetEnvironment,
     onSuccess: async () => {
       forged.reset();
       await invalidate();

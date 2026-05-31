@@ -15,46 +15,46 @@ import { StepCard, type StepCardProps } from "#/components/step-card";
 import { Alert, AlertDescription } from "#/components/ui/alert";
 import { Button } from "#/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "#/components/ui/card";
-import { useSecurityDemo } from "#/lib/useSecurityDemo";
+import { useSecurityFlow } from "#/lib/useSecurityFlow";
 
 export const Route = createFileRoute("/")({
-  component: SecurityDemoDashboard,
+  component: SecurityFlowPage,
 });
 
-function SecurityDemoDashboard() {
-  const demo = useSecurityDemo();
-  const { identity, server, forged, busy, error } = demo;
+function SecurityFlowPage() {
+  const flow = useSecurityFlow();
+  const { identity, server, forged, busy, error } = flow;
 
   const steps: StepCardProps[] = [
     {
       title: "1. Register",
       description: "User and Server register with the TTP and receive certificates.",
-      complete: demo.registrationComplete,
+      complete: flow.registrationComplete,
       icon: <KeyRoundIcon />,
-      button: { label: "Register", icon: <PlayIcon />, onClick: () => demo.register.mutate(), disabled: busy },
+      button: { label: "Register", icon: <PlayIcon />, onClick: () => flow.register.mutate(), disabled: busy },
     },
     {
       title: "2. Authenticate",
       description: "The TTP validates certificates and issues a shared session key.",
-      complete: demo.sessionEstablished,
+      complete: flow.sessionEstablished,
       icon: <ShieldCheckIcon />,
       button: {
         label: "Start session",
         icon: <LockIcon />,
-        onClick: () => demo.authenticate.mutate(),
-        disabled: busy || !demo.serverRegistered,
+        onClick: () => flow.authenticate.mutate(),
+        disabled: busy || !flow.serverRegistered,
       },
     },
     {
       title: "3. Use service",
       description: "The User sends one encrypted request to the protected Server.",
-      complete: demo.serviceExchanged,
+      complete: flow.serviceExchanged,
       icon: <TerminalIcon />,
       button: {
         label: "Exchange data",
         icon: <PlayIcon />,
-        onClick: () => demo.exchange.mutate(),
-        disabled: busy || !demo.sessionEstablished,
+        onClick: () => flow.exchange.mutate(),
+        disabled: busy || !flow.sessionEstablished,
       },
     },
     {
@@ -66,7 +66,7 @@ function SecurityDemoDashboard() {
         label: "Run test",
         variant: "secondary",
         onClick: () => forged.mutate(),
-        disabled: busy || !demo.serverRegistered,
+        disabled: busy || !flow.serverRegistered,
       },
     },
   ];
@@ -75,10 +75,9 @@ function SecurityDemoDashboard() {
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-6">
       <section className="flex flex-col gap-2">
         <p className="text-sm font-medium text-muted-foreground">BSK / SCS project</p>
-        <h1 className="text-3xl font-semibold tracking-normal text-foreground">Trusted Third Party demo</h1>
+        <h1 className="text-3xl font-semibold tracking-normal text-foreground">Trusted Third Party flow</h1>
         <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-          Minimal client view for registration, authentication, AES-256 service exchange, and forged certificate
-          rejection.
+          Register, authenticate, exchange AES-256 encrypted service data, and verify forged certificate rejection.
         </p>
       </section>
 
@@ -103,19 +102,19 @@ function SecurityDemoDashboard() {
         <CardContent className="grid gap-3 text-sm md:grid-cols-2">
           <Evidence label="User" value={identity?.userRegistered ? "registered" : "not registered"} />
           <Evidence label="Server" value={server?.registered ? "registered" : "not registered"} />
-          <Evidence label="Session" value={demo.sessionEstablished ? identity?.sessionId : "not established"} />
-          <Evidence label="Service" value={demo.serviceExchanged ? "encrypted exchange complete" : "not used"} />
+          <Evidence label="Session" value={flow.sessionEstablished ? identity?.sessionId : "not established"} />
+          <Evidence label="Service" value={flow.serviceExchanged ? "encrypted exchange complete" : "not used"} />
           <Evidence label="Forged certificate" value={forged.data?.message ?? "not tested"} />
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
-              onClick={() => demo.closeSession.mutate()}
-              disabled={busy || !demo.sessionEstablished}
+              onClick={() => flow.closeSession.mutate()}
+              disabled={busy || !flow.sessionEstablished}
             >
               <StopCircleIcon />
               Close session
             </Button>
-            <Button variant="ghost" onClick={() => demo.reset.mutate()} disabled={busy}>
+            <Button variant="ghost" onClick={() => flow.reset.mutate()} disabled={busy}>
               <RotateCcwIcon />
               Reset
             </Button>

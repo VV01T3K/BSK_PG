@@ -1,7 +1,7 @@
 import { hash } from "@bsk/crypto";
 import type { ClientSessionState, PrincipalState } from "./types";
 
-/** Browser-held secrets only — never rendered, derived public fields are exposed via clientIdentity(). */
+/** Browser-held secrets only; derived public fields are exposed via clientIdentity(). */
 export const state: {
   user?: PrincipalState;
   session?: ClientSessionState;
@@ -12,7 +12,7 @@ export function clearClientState() {
   state.session = undefined;
 }
 
-/** The browser-held side of the demo, derived from local secrets only (no server data). */
+/** Browser-held identity state derived from local secrets only (no server data). */
 export function clientIdentity() {
   return {
     userRegistered: Boolean(state.user),

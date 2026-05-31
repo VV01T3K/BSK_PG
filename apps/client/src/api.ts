@@ -17,7 +17,7 @@ type PrincipalPublicKeys = {
   exchangePublicKeyPem: string;
 };
 
-export type UserAuthMaterial = {
+export type UserAuthenticationRequest = {
   userId: string;
   userCertificatePem: string;
   serverId: string;
@@ -34,9 +34,9 @@ export const ttpProtocol = {
     });
   },
 
-  async authenticateUser(material: UserAuthMaterial) {
+  async authenticateUser(request: UserAuthenticationRequest) {
     return ttp.auth.user({
-      encryptedAuthMaterial: await encryptJsonForTtp(material),
+      encryptedAuthMaterial: await encryptJsonForTtp(request),
     });
   },
 

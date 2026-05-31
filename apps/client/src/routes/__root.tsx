@@ -39,7 +39,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <QueryClientProvider client={router.options.context.queryClient}>
           <div className="min-h-screen">
             <header className="border-b px-6 py-3 text-sm font-medium text-muted-foreground">
-              BSK PG Security Demo
+              BSK PG Security Flow
             </header>
             {children}
           </div>
@@ -56,7 +56,7 @@ function NotFound() {
       <p className="text-sm font-medium text-muted-foreground">404</p>
       <h1 className="text-3xl font-semibold tracking-normal text-foreground">Page not found</h1>
       <p className="text-sm leading-6 text-muted-foreground">
-        The requested route is not available in this demo.
+        The requested route is not available.
       </p>
       <div>
         <Link

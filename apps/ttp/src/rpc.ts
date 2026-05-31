@@ -28,7 +28,7 @@ type UserAuthInput = {
   encryptedAuthMaterial: string;
 };
 
-type UserAuthMaterial = {
+type UserAuthenticationRequest = {
   userId: string;
   userCertificatePem: string;
   serverId: string;
@@ -107,18 +107,18 @@ export const ttpRouter = {
 
     user: os.input(type<UserAuthInput>()).handler(({ input }) => {
       try {
-        const material = JSON.parse(
+        const request = JSON.parse(
           rsa.privateKey(ca.privateKeyPem).decryptHybrid(input.encryptedAuthMaterial),
-        ) as UserAuthMaterial;
+        ) as UserAuthenticationRequest;
         const user = validateCertificate({
           role: "user",
-          subjectId: material.userId,
-          certificatePem: material.userCertificatePem,
+          subjectId: request.userId,
+          certificatePem: request.userCertificatePem,
         });
         const server = validateCertificate({
           role: "server",
-          subjectId: material.serverId,
-          certificatePem: material.serverCertificatePem,
+          subjectId: request.serverId,
+          certificatePem: request.serverCertificatePem,
         });
         const ticket: SessionTicket = {
           sessionId: random.hex(16),
@@ -135,7 +135,7 @@ export const ttpRouter = {
           expiresAt,
         });
 
-        log("ttp", "session key issued", `session ${ticket.sessionId} for request ${material.requestId}`);
+        log("ttp", "session key issued", `session ${ticket.sessionId} for request ${request.requestId}`);
 
         const ticketPayload = JSON.stringify(ticket);
         return {

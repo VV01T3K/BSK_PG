@@ -1,12 +1,12 @@
 import { aesGcm, hash, random, rsa, type SessionTicket } from "@bsk/crypto";
-import { service, ttpProtocol, type UserAuthMaterial } from "#/api";
+import { service, ttpProtocol, type UserAuthenticationRequest } from "#/api";
 import { clearClientState, requireSession, requireUser, state } from "./state";
 import type { PrincipalState } from "./types";
 
 type RegisteredServer = Awaited<ReturnType<typeof service.state>> & { serverId: string; certificatePem: string };
 
-/** Plain browser-side protocol steps. React components use these through useSecurityDemo(). */
-export const securityDemoFlow = {
+/** Browser-side protocol steps. React components use these through useSecurityFlow(). */
+export const securityFlow = {
   async resetEnvironment() {
     clearClientState();
     await service.reset();
@@ -28,10 +28,10 @@ export const securityDemoFlow = {
 
   async authenticateSession() {
     const user = requireUser();
-    const material = createAuthMaterial(user, await loadRegisteredServer());
+    const request = createUserAuthenticationRequest(user, await loadRegisteredServer());
 
-    await service.server.authenticate({ requestId: material.requestId });
-    const userAuth = await ttpProtocol.authenticateUser(material);
+    await service.server.authenticate({ requestId: request.requestId });
+    const userAuth = await ttpProtocol.authenticateUser(request);
     const userSession = decryptSessionTicket(user, userAuth.encryptedSessionKeyForUser);
 
     if (userSession.sessionId !== userAuth.sessionId) {
@@ -66,10 +66,10 @@ export const securityDemoFlow = {
   async verifyForgedCertificateIsRejected() {
     const user = requireUser();
     const server = await loadRegisteredServer();
-    const material = createAuthMaterial(user, server, server.certificatePem);
+    const request = createUserAuthenticationRequest(user, server, server.certificatePem);
 
     try {
-      await ttpProtocol.authenticateUser(material);
+      await ttpProtocol.authenticateUser(request);
     } catch (error) {
       return { rejected: true, message: error instanceof Error ? error.message : "forged certificate rejected" };
     }
@@ -93,11 +93,11 @@ async function loadRegisteredServer() {
   return server as RegisteredServer;
 }
 
-function createAuthMaterial(
+function createUserAuthenticationRequest(
   user: PrincipalState,
   server: RegisteredServer,
   userCertificatePem = user.certificatePem,
-): UserAuthMaterial {
+): UserAuthenticationRequest {
   return {
     userId: user.id,
     userCertificatePem,
