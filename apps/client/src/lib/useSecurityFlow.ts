@@ -1,20 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { serviceQuery } from "#/api";
 import { securityFlow } from "./security-flow";
-import { clientIdentity } from "./state";
+import { clientSecurityState } from "./client-security-state";
 
-const CLIENT_IDENTITY_KEY = ["client-identity"] as const;
+const CLIENT_STATUS_KEY = ["client-status"] as const;
 
 /** React adapter for the security flow page: queries current state and exposes protocol steps as mutations. */
 export function useSecurityFlow() {
   const queryClient = useQueryClient();
   const serverQuery = useQuery(serviceQuery.state.queryOptions());
-  const identityQuery = useQuery({ queryKey: CLIENT_IDENTITY_KEY, queryFn: clientIdentity });
+  const clientStatusQuery = useQuery({
+    queryKey: CLIENT_STATUS_KEY,
+    queryFn: () => clientSecurityState.readPublicStatus(),
+  });
 
   const invalidate = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: serviceQuery.state.key() }),
-      queryClient.invalidateQueries({ queryKey: CLIENT_IDENTITY_KEY }),
+      queryClient.invalidateQueries({ queryKey: CLIENT_STATUS_KEY }),
     ]);
 
   const forged = useMutation({ mutationFn: securityFlow.verifyForgedCertificateIsRejected });
@@ -32,10 +35,10 @@ export function useSecurityFlow() {
 
   const mutations = [register, authenticate, exchange, forged, closeSession, reset];
   const server = serverQuery.data;
-  const identity = identityQuery.data;
+  const clientStatus = clientStatusQuery.data;
 
   return {
-    identity,
+    clientStatus,
     server,
     register,
     authenticate,
@@ -46,8 +49,8 @@ export function useSecurityFlow() {
     busy: mutations.some((mutation) => mutation.isPending),
     error: mutations.find((mutation) => mutation.error)?.error as Error | undefined,
     serverRegistered: Boolean(server?.registered),
-    registrationComplete: Boolean(identity?.userRegistered && server?.registered),
-    sessionEstablished: Boolean(identity?.sessionId && server?.sessionEstablished),
+    registrationComplete: Boolean(clientStatus?.userRegistered && server?.registered),
+    sessionEstablished: Boolean(clientStatus?.sessionId && server?.sessionEstablished),
     serviceExchanged: Boolean(server?.lastPlainResponse),
   };
 }

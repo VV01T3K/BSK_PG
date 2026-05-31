@@ -23,7 +23,7 @@ export const Route = createFileRoute("/")({
 
 function SecurityFlowPage() {
   const flow = useSecurityFlow();
-  const { identity, server, forged, busy, error } = flow;
+  const { clientStatus, server, forged, busy, error } = flow;
 
   const steps: StepCardProps[] = [
     {
@@ -100,9 +100,9 @@ function SecurityFlowPage() {
           <CardDescription>Only the evidence needed for the presentation flow.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 text-sm md:grid-cols-2">
-          <Evidence label="User" value={identity?.userRegistered ? "registered" : "not registered"} />
+          <Evidence label="User" value={clientStatus?.userRegistered ? "registered" : "not registered"} />
           <Evidence label="Server" value={server?.registered ? "registered" : "not registered"} />
-          <Evidence label="Session" value={flow.sessionEstablished ? identity?.sessionId : "not established"} />
+          <Evidence label="Session" value={flow.sessionEstablished ? clientStatus?.sessionId : "not established"} />
           <Evidence label="Service" value={flow.serviceExchanged ? "encrypted exchange complete" : "not used"} />
           <Evidence label="Forged certificate" value={forged.data?.message ?? "not tested"} />
           <div className="flex flex-wrap gap-2">

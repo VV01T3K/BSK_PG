@@ -1,14 +1,13 @@
 import { aesGcm, hash, random, rsa, type SessionTicket } from "@bsk/crypto";
 import { service, ttpProtocol, type UserAuthenticationRequest } from "#/api";
-import { clearClientState, requireSession, requireUser, state } from "./state";
-import type { PrincipalState } from "./types";
+import { clientSecurityState, type RegisteredUser } from "./client-security-state";
 
 type RegisteredServer = Awaited<ReturnType<typeof service.state>> & { serverId: string; certificatePem: string };
 
 /** Browser-side protocol steps. React components use these through useSecurityFlow(). */
 export const securityFlow = {
   async resetEnvironment() {
-    clearClientState();
+    clientSecurityState.reset();
     await service.reset();
   },
 
@@ -21,13 +20,16 @@ export const securityFlow = {
       exchangePublicKeyPem: exchangeKeyPair.publicKeyPem,
     });
 
-    state.user = { id: registration.subjectId, exchangeKeyPair, certificatePem: registration.certificatePem };
-    state.session = undefined;
+    clientSecurityState.storeUser({
+      id: registration.subjectId,
+      exchangeKeyPair,
+      certificatePem: registration.certificatePem,
+    });
     await service.server.register();
   },
 
   async authenticateSession() {
-    const user = requireUser();
+    const user = registeredUser();
     const request = createUserAuthenticationRequest(user, await loadRegisteredServer());
 
     await service.server.authenticate({ requestId: request.requestId });
@@ -44,16 +46,16 @@ export const securityFlow = {
       expiresAt: userAuth.expiresAt,
     });
 
-    state.session = {
+    clientSecurityState.storeSession({
       sessionId: userAuth.sessionId,
       userSessionKey: userSession.sessionKey,
       expiresAt: userAuth.expiresAt,
-    };
+    });
   },
 
   async sendEncryptedServiceRequest() {
-    const { sessionId, userSessionKey } = requireSession();
-    const user = requireUser();
+    const { sessionId, userSessionKey } = activeSession();
+    const user = registeredUser();
     const requestPlaintext = `User ${user.id.slice(0, 12)} requests the protected grade-summary service.`;
     const encryptedRequest = aesGcm
       .withKey(userSessionKey)
@@ -64,7 +66,7 @@ export const securityFlow = {
   },
 
   async verifyForgedCertificateIsRejected() {
-    const user = requireUser();
+    const user = registeredUser();
     const server = await loadRegisteredServer();
     const request = createUserAuthenticationRequest(user, server, server.certificatePem);
 
@@ -78,12 +80,24 @@ export const securityFlow = {
   },
 
   async closeSession() {
-    const session = requireSession();
+    const session = activeSession();
     await ttpProtocol.closeSession(session.sessionId);
     await service.server.closeSession();
-    state.session = undefined;
+    clientSecurityState.clearSession();
   },
 };
+
+function registeredUser() {
+  const { user } = clientSecurityState.read();
+  if (!user) throw new Error("user is not registered yet");
+  return user;
+}
+
+function activeSession() {
+  const { session } = clientSecurityState.read();
+  if (!session) throw new Error("session is not established yet");
+  return session;
+}
 
 async function loadRegisteredServer() {
   const server = await service.state();
@@ -94,7 +108,7 @@ async function loadRegisteredServer() {
 }
 
 function createUserAuthenticationRequest(
-  user: PrincipalState,
+  user: RegisteredUser,
   server: RegisteredServer,
   userCertificatePem = user.certificatePem,
 ): UserAuthenticationRequest {
@@ -107,6 +121,6 @@ function createUserAuthenticationRequest(
   };
 }
 
-function decryptSessionTicket(user: PrincipalState, encryptedTicket: string): SessionTicket {
+function decryptSessionTicket(user: RegisteredUser, encryptedTicket: string): SessionTicket {
   return JSON.parse(rsa.privateKey(user.exchangeKeyPair.privateKeyPem).decrypt(encryptedTicket)) as SessionTicket;
 }
