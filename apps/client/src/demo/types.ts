@@ -1,6 +1,6 @@
 import type { RsaPair } from "@bsk/crypto";
 
-export type { EncryptedEnvelope, ServiceServerSnapshot } from "server";
+export type { SessionEncryptedPayload, ServiceServerSnapshot } from "server";
 
 export type RsaKeyPair = RsaPair;
 

@@ -5,10 +5,10 @@ import {
   type SessionTicket,
 } from "@bsk/crypto";
 import { ORPCError, os, type } from "@orpc/server";
-import { issueCertificate, validateCertificate } from "./certificates.js";
-import { ca } from "./crypto.js";
-import { log, principalKey, principals, readLogs, sessions } from "./state.js";
-import type { PrincipalRecord, Role } from "./types.js";
+import { issueCertificate, validateCertificate } from "./certificates";
+import { ca } from "./crypto";
+import { log, principalKey, principals, readLogs, sessions } from "./state";
+import type { PrincipalRecord, Role } from "./types";
 
 const SESSION_TTL_MS = 15 * 60 * 1000;
 

@@ -1,5 +1,5 @@
 import { createFileLogger } from "@bsk/rpc/log";
-import type { PrincipalRecord, Role, SessionRecord } from "./types.js";
+import type { PrincipalRecord, Role, SessionRecord } from "./types";
 
 export const principals = new Map<string, PrincipalRecord>();
 export const sessions = new Map<string, SessionRecord>();

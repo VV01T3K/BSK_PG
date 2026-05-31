@@ -1,28 +1,15 @@
 import forge from "node-forge";
+import { random } from "./crypto";
+import type {
+  CertificateAuthority,
+  CertificateAuthorityOptions,
+  PrincipalCertificateInput,
+} from "./types";
 
 const RSA_BITS = 4096;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function randomHex(bytes: number): string {
-  return forge.util.bytesToHex(forge.random.getBytesSync(bytes));
-}
-
-type CertificateAuthorityOptions = {
-  commonName: string;
-  organization: string;
-  validDays?: number;
-};
-
-type PrincipalCertificateInput = {
-  authority: CertificateAuthority;
-  role: string;
-  subjectId: string;
-  publicKeyPem: string;
-  organization?: string;
-  validDays?: number;
-};
-
-export function createCertificateAuthority(options: CertificateAuthorityOptions) {
+export function createCertificateAuthority(options: CertificateAuthorityOptions): CertificateAuthority {
   const keys = forge.pki.rsa.generateKeyPair({ bits: RSA_BITS, workers: -1 });
   const cert = forge.pki.createCertificate();
   const attrs = [
@@ -31,7 +18,7 @@ export function createCertificateAuthority(options: CertificateAuthorityOptions)
   ];
 
   cert.publicKey = keys.publicKey;
-  cert.serialNumber = randomHex(16);
+  cert.serialNumber = random.hex(16);
   cert.validity.notBefore = new Date();
   cert.validity.notAfter = new Date(Date.now() + (options.validDays ?? 365) * DAY_MS);
   cert.setSubject(attrs);
@@ -52,13 +39,11 @@ export function createCertificateAuthority(options: CertificateAuthorityOptions)
   };
 }
 
-export type CertificateAuthority = ReturnType<typeof createCertificateAuthority>;
-
 export function issuePrincipalCertificate(input: PrincipalCertificateInput): string {
   const cert = forge.pki.createCertificate();
 
   cert.publicKey = forge.pki.publicKeyFromPem(input.publicKeyPem);
-  cert.serialNumber = randomHex(16);
+  cert.serialNumber = random.hex(16);
   cert.validity.notBefore = new Date();
   cert.validity.notAfter = new Date(Date.now() + (input.validDays ?? 30) * DAY_MS);
   cert.setSubject([

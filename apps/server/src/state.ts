@@ -1,6 +1,6 @@
 import { createFileLogger, type EventLogEntry } from "@bsk/rpc/log";
 import { hash, type RsaPair } from "@bsk/crypto";
-import type { EncryptedEnvelope, ServiceServerSnapshot } from "./types.js";
+import type { SessionEncryptedPayload, ServiceServerSnapshot } from "./types";
 
 type ServiceServerState = {
   serverId?: string;
@@ -12,8 +12,8 @@ type ServiceServerState = {
   sessionExpiresAt?: string;
   lastPlainRequest?: string;
   lastPlainResponse?: string;
-  lastEncryptedRequest?: EncryptedEnvelope;
-  lastEncryptedResponse?: EncryptedEnvelope;
+  lastEncryptedRequest?: SessionEncryptedPayload;
+  lastEncryptedResponse?: SessionEncryptedPayload;
 };
 
 export const state: ServiceServerState = {};

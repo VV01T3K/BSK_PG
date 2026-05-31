@@ -1,6 +1,6 @@
-import type { EncryptedEnvelope } from "@bsk/crypto";
+import type { SessionEncryptedPayload } from "@bsk/crypto";
 
-export type { EncryptedEnvelope };
+export type { SessionEncryptedPayload };
 
 export interface ServiceServerSnapshot {
   registered: boolean;
@@ -13,6 +13,6 @@ export interface ServiceServerSnapshot {
   sessionExpiresAt?: string;
   lastPlainRequest?: string;
   lastPlainResponse?: string;
-  lastEncryptedRequest?: EncryptedEnvelope;
-  lastEncryptedResponse?: EncryptedEnvelope;
+  lastEncryptedRequest?: SessionEncryptedPayload;
+  lastEncryptedResponse?: SessionEncryptedPayload;
 }

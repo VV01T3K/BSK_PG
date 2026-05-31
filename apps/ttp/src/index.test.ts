@@ -5,7 +5,7 @@ import {
 } from "@bsk/crypto";
 import { createRouterClient } from "@orpc/server";
 import { beforeEach, describe, expect, it } from "vitest";
-import { resetTtpStateForTests, ttpRouter } from "./index.js";
+import { resetTtpStateForTests, ttpRouter } from "./index";
 
 type Role = "user" | "server";
 

@@ -1,7 +1,7 @@
 import { issuePrincipalCertificate } from "@bsk/crypto";
-import { ca } from "./crypto.js";
-import { principalKey, principals } from "./state.js";
-import type { PrincipalRecord } from "./types.js";
+import { ca } from "./crypto";
+import { principalKey, principals } from "./state";
+import type { PrincipalRecord } from "./types";
 
 type CertifiablePrincipal = Pick<PrincipalRecord, "role" | "subjectId" | "publicKeys">;
 

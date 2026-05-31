@@ -1,6 +1,6 @@
 import forge from "node-forge";
 import { beforeAll, describe, expect, it } from "vitest";
-import { type CertificateAuthority, createCertificateAuthority, issuePrincipalCertificate, rsa } from "../src/index.ts";
+import { type CertificateAuthority, createCertificateAuthority, issuePrincipalCertificate, rsa } from "../src/index";
 
 type ExtKeyUsage = { clientAuth?: boolean; serverAuth?: boolean };
 

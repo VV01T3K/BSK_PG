@@ -1,11 +1,11 @@
 import { createRpcFetch } from "@bsk/rpc/server";
 
-import { serviceRouter } from "./rpc.js";
+import { serviceRouter } from "./rpc";
 
-export { serviceRouter } from "./rpc.js";
-export { resetServiceServerStateForTests } from "./state.js";
-export type { EncryptedEnvelope, ServiceServerSnapshot } from "./types.js";
-export type { ServiceRouter } from "./rpc.js";
+export { serviceRouter } from "./rpc";
+export { resetServiceServerStateForTests } from "./state";
+export type { SessionEncryptedPayload, ServiceServerSnapshot } from "./types";
+export type { ServiceRouter } from "./rpc";
 
 export const fetch = createRpcFetch(serviceRouter, "BSK PG protected service server");
 

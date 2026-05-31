@@ -26,7 +26,7 @@ import {
   runMitmTamperAttack,
 } from "#/demo/actions";
 import { clientIdentity } from "#/demo/state";
-import type { EncryptedEnvelope } from "#/demo/types";
+import type { SessionEncryptedPayload } from "#/demo/types";
 import { serviceQuery, ttpQuery } from "#/api";
 
 const CLIENT_IDENTITY_KEY = ["client-identity"] as const;
@@ -150,7 +150,7 @@ function SecurityDemoDashboard() {
         />
         <StatusCard
           title="3. Service"
-          description="Client and protected Server exchange AES-256-GCM envelopes."
+          description="Client and protected Server exchange AES-256-GCM payloads."
           complete={Boolean(server?.lastEncryptedResponse)}
           icon={<TerminalIcon />}
           action={
@@ -215,9 +215,9 @@ function SecurityDemoDashboard() {
           </CardHeader>
           <CardContent className="grid gap-3 text-sm lg:grid-cols-2">
             <PayloadBlock title="User plaintext request" value={server?.lastPlainRequest} />
-            <PayloadBlock title="Encrypted request envelope" value={formatEnvelope(server?.lastEncryptedRequest)} />
+            <PayloadBlock title="Encrypted request payload" value={formatPayload(server?.lastEncryptedRequest)} />
             <PayloadBlock title="Server plaintext response" value={server?.lastPlainResponse} />
-            <PayloadBlock title="Encrypted response envelope" value={formatEnvelope(server?.lastEncryptedResponse)} />
+            <PayloadBlock title="Encrypted response payload" value={formatPayload(server?.lastEncryptedResponse)} />
           </CardContent>
         </Card>
       </section>
@@ -304,10 +304,10 @@ function AttackResult({ label, ok, message }: { label: string; ok?: boolean; mes
   );
 }
 
-function formatEnvelope(envelope?: EncryptedEnvelope): string | undefined {
-  if (!envelope) {
+function formatPayload(payload?: SessionEncryptedPayload): string | undefined {
+  if (!payload) {
     return undefined;
   }
 
-  return JSON.stringify(envelope, null, 2);
+  return JSON.stringify(payload, null, 2);
 }

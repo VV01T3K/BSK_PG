@@ -1,6 +1,6 @@
 import forge from "node-forge";
 import { beforeAll, describe, expect, it } from "vitest";
-import { aesGcm, hash, random, rsa, type RsaPair } from "../src/index.ts";
+import { aesGcm, hash, random, rsa, type RsaPair } from "../src/index";
 
 /** Flip the first byte of a base64 blob so the decoded bytes are guaranteed to differ. */
 function tamperBase64(value: string): string {
@@ -41,35 +41,35 @@ describe("random", () => {
 describe("aesGcm", () => {
   it("round-trips a plaintext with withKey()", () => {
     const key = random.sessionKey();
-    const envelope = aesGcm.withKey(key).encrypt("service payload");
-    expect(aesGcm.withKey(key).decrypt(envelope)).toBe("service payload");
+    const payload = aesGcm.withKey(key).encrypt("service payload");
+    expect(aesGcm.withKey(key).decrypt(payload)).toBe("service payload");
   });
 
   it("forSession() round-trips and stamps the session id", () => {
     const key = random.sessionKey();
     const cipher = aesGcm.withKey(key).forSession("session-1");
-    const envelope = cipher.encrypt("classified");
-    expect(envelope.sessionId).toBe("session-1");
-    expect(cipher.decrypt(envelope)).toBe("classified");
+    const payload = cipher.encrypt("classified");
+    expect(payload.sessionId).toBe("session-1");
+    expect(cipher.decrypt(payload)).toBe("classified");
   });
 
-  it("rejects an envelope decrypted under the wrong session id", () => {
+  it("rejects a payload decrypted under the wrong session id", () => {
     const key = random.sessionKey();
-    const envelope = aesGcm.withKey(key).forSession("session-1").encrypt("classified");
+    const payload = aesGcm.withKey(key).forSession("session-1").encrypt("classified");
     const wrongSession = aesGcm.withKey(key).forSession("session-2");
-    expect(() => wrongSession.decrypt(envelope)).toThrow();
+    expect(() => wrongSession.decrypt(payload)).toThrow();
   });
 
   it("fails authentication when the ciphertext is tampered with", () => {
     const cipher = aesGcm.withKey(random.sessionKey());
-    const envelope = cipher.encrypt("classified");
-    expect(() => cipher.decrypt({ ...envelope, ciphertext: tamperBase64(envelope.ciphertext) })).toThrow();
+    const payload = cipher.encrypt("classified");
+    expect(() => cipher.decrypt({ ...payload, ciphertext: tamperBase64(payload.ciphertext) })).toThrow();
   });
 
   it("fails authentication when the auth tag is tampered with", () => {
     const cipher = aesGcm.withKey(random.sessionKey());
-    const envelope = cipher.encrypt("classified");
-    expect(() => cipher.decrypt({ ...envelope, authTag: tamperBase64(envelope.authTag) })).toThrow();
+    const payload = cipher.encrypt("classified");
+    expect(() => cipher.decrypt({ ...payload, authTag: tamperBase64(payload.authTag) })).toThrow();
   });
 });
 

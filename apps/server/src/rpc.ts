@@ -7,8 +7,8 @@ import {
 } from "@bsk/crypto";
 import { createRpcClient } from "@bsk/rpc/client";
 import { ORPCError, os, type } from "@orpc/server";
-import { log, readLogs, requireRegisteredServer, requireSessionKey, resetServiceServerStateForTests, snapshot, state } from "./state.js";
-import type { EncryptedEnvelope, ServiceServerSnapshot } from "./types.js";
+import { log, readLogs, requireRegisteredServer, requireSessionKey, resetServiceServerStateForTests, snapshot, state } from "./state";
+import type { SessionEncryptedPayload, ServiceServerSnapshot } from "./types";
 import type { TtpRouter } from "ttp";
 
 const ttp = createRpcClient<TtpRouter>(process.env.TTP_API_BASE_URL ?? "http://localhost:3001");
@@ -101,7 +101,7 @@ export const serviceRouter = {
               .decrypt(input.encryptedSessionKeyForServer),
           ) as SessionTicket;
           if (ticket.sessionId !== input.sessionId) {
-            throw new Error("session key envelope does not match session id");
+            throw new Error("session key payload does not match session id");
           }
           state.sessionId = ticket.sessionId;
           state.sessionKey = ticket.sessionKey;
@@ -124,24 +124,24 @@ export const serviceRouter = {
   },
 
   service: {
-    exchange: os.input(type<{ envelope: EncryptedEnvelope }>()).handler(({ input }) => {
+    exchange: os.input(type<{ payload: SessionEncryptedPayload }>()).handler(({ input }) => {
       try {
         const sessionKey = requireSessionKey();
         const sessionCipher = aesGcm.withKey(sessionKey).forSession(state.sessionId!);
-        const plaintext = sessionCipher.decrypt(input.envelope);
+        const plaintext = sessionCipher.decrypt(input.payload);
         const responsePlaintext = `Protected service accepted encrypted request: ${plaintext}`;
         const encryptedResponse = sessionCipher.encrypt(responsePlaintext);
 
         state.lastPlainRequest = plaintext;
         state.lastPlainResponse = responsePlaintext;
-        state.lastEncryptedRequest = input.envelope;
+        state.lastEncryptedRequest = input.payload;
         state.lastEncryptedResponse = encryptedResponse;
         log("encrypted service exchange", `session ${state.sessionId}`);
 
         return {
           plaintextReceived: plaintext,
           plaintextResponse: responsePlaintext,
-          envelope: encryptedResponse,
+          payload: encryptedResponse,
         };
       } catch (error) {
         reject("BAD_REQUEST", error);
