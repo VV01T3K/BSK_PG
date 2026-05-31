@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { fetch as serviceFetch, resetServiceServerStateForTests } from "server";
 import { fetch as ttpFetch, resetTtpStateForTests } from "ttp";
+import { service } from "#/api";
 import {
   authenticateSecurityDemoSession,
   exchangeEncryptedServiceMessage,
@@ -9,6 +10,7 @@ import {
   runForgedCertificateAttack,
   runMitmTamperAttack,
 } from "./actions";
+import { clientIdentity } from "./state";
 
 const originalFetch = globalThis.fetch;
 
@@ -56,19 +58,20 @@ describe("browser-style Client security flow", () => {
   });
 
   it("registers, authenticates, exchanges encrypted service data, and rejects attacks", async () => {
-    let snapshot = await registerSecurityDemoRoles();
-    expect(snapshot.userRegistered).toBe(true);
-    expect(snapshot.serverRegistered).toBe(true);
+    await registerSecurityDemoRoles();
+    expect((await clientIdentity()).userRegistered).toBe(true);
+    expect((await service.state()).registered).toBe(true);
 
-    snapshot = await authenticateSecurityDemoSession();
-    expect(snapshot.sessionEstablished).toBe(true);
-    expect(snapshot.sessionId).toBeTruthy();
+    await authenticateSecurityDemoSession();
+    expect((await service.state()).sessionEstablished).toBe(true);
+    expect((await clientIdentity()).sessionId).toBeTruthy();
 
-    snapshot = await exchangeEncryptedServiceMessage();
-    expect(snapshot.lastPlainRequest).toContain("protected grade-summary service");
-    expect(snapshot.lastPlainResponse).toContain("Protected service accepted encrypted request");
-    expect(snapshot.lastEncryptedRequest?.ciphertext).toBeTruthy();
-    expect(snapshot.lastEncryptedResponse?.ciphertext).toBeTruthy();
+    await exchangeEncryptedServiceMessage();
+    const server = await service.state();
+    expect(server.lastPlainRequest).toContain("protected grade-summary service");
+    expect(server.lastPlainResponse).toContain("Protected service accepted encrypted request");
+    expect(server.lastEncryptedRequest?.ciphertext).toBeTruthy();
+    expect(server.lastEncryptedResponse?.ciphertext).toBeTruthy();
 
     const forgedResult = await runForgedCertificateAttack();
     expect(forgedResult.rejected).toBe(true);

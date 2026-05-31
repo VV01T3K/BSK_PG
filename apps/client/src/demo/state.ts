@@ -1,6 +1,7 @@
 import { fingerprint } from "./browser-crypto";
-import type { ClientSessionState, PrincipalState, SecurityDemoSnapshot, ServiceServerSnapshot } from "./types";
+import type { ClientSessionState, PrincipalState } from "./types";
 
+/** Browser-held secrets only — never rendered, derived public fields are exposed via clientIdentity(). */
 export const state: {
   user?: PrincipalState;
   session?: ClientSessionState;
@@ -11,21 +12,14 @@ export function clearClientState() {
   state.session = undefined;
 }
 
-export async function snapshot(server: ServiceServerSnapshot | undefined): Promise<SecurityDemoSnapshot> {
+/** The browser-held side of the demo, derived from local secrets only (no server data). */
+export async function clientIdentity() {
   return {
     userRegistered: Boolean(state.user),
-    serverRegistered: Boolean(server?.registered),
-    sessionEstablished: Boolean(state.session && server?.sessionEstablished),
     userId: state.user?.id,
-    serverId: server?.serverId,
     userCertificateFingerprint: state.user ? await fingerprint(state.user.certificatePem) : undefined,
-    serverCertificateFingerprint: server?.certificateFingerprint,
     sessionId: state.session?.sessionId,
-    sessionExpiresAt: state.session?.expiresAt ?? server?.sessionExpiresAt,
-    lastPlainRequest: server?.lastPlainRequest,
-    lastPlainResponse: server?.lastPlainResponse,
-    lastEncryptedRequest: server?.lastEncryptedRequest,
-    lastEncryptedResponse: server?.lastEncryptedResponse,
+    sessionExpiresAt: state.session?.expiresAt,
   };
 }
 

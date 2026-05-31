@@ -1,4 +1,3 @@
-import type { EncryptedEnvelope } from "server";
 export type { EncryptedEnvelope, ServiceServerSnapshot } from "server";
 
 export interface RsaKeyPair {
@@ -17,22 +16,6 @@ export interface ClientSessionState {
   sessionId: string;
   userSessionKey: string;
   expiresAt: string;
-}
-
-export interface SecurityDemoSnapshot {
-  userRegistered: boolean;
-  serverRegistered: boolean;
-  sessionEstablished: boolean;
-  userId?: string;
-  serverId?: string;
-  userCertificateFingerprint?: string;
-  serverCertificateFingerprint?: string;
-  sessionId?: string;
-  sessionExpiresAt?: string;
-  lastPlainRequest?: string;
-  lastPlainResponse?: string;
-  lastEncryptedRequest?: EncryptedEnvelope;
-  lastEncryptedResponse?: EncryptedEnvelope;
 }
 
 export interface AttackResult {

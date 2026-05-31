@@ -8,8 +8,8 @@ import {
   randomIdSeed,
   sha256Hex,
 } from "./browser-crypto";
-import { clearClientState, requireSession, requireUser, snapshot, state } from "./state";
-import type { AttackResult, EncryptedEnvelope, PrincipalState, SecurityDemoSnapshot, ServiceServerSnapshot } from "./types";
+import { clearClientState, requireSession, requireUser, state } from "./state";
+import type { AttackResult, EncryptedEnvelope, PrincipalState, ServiceServerSnapshot } from "./types";
 
 async function getTtpPublicKey(): Promise<string> {
   const payload = await ttp.publicKey();
@@ -52,25 +52,18 @@ async function decryptSessionKey(user: PrincipalState, encryptedSessionKey: stri
   };
 }
 
-export async function getSecurityDemoState(): Promise<SecurityDemoSnapshot> {
-  const server = await service.state().catch(() => undefined);
-  return snapshot(server);
-}
-
-export async function resetSecurityDemo(): Promise<SecurityDemoSnapshot> {
+export async function resetSecurityDemo(): Promise<void> {
   clearClientState();
-  const server = await service.reset();
-  return snapshot(server);
+  await service.reset();
 }
 
-export async function registerSecurityDemoRoles(): Promise<SecurityDemoSnapshot> {
+export async function registerSecurityDemoRoles(): Promise<void> {
   state.user = await registerUser();
-  const server = await service.server.register();
+  await service.server.register();
   state.session = undefined;
-  return snapshot(server);
 }
 
-export async function authenticateSecurityDemoSession(): Promise<SecurityDemoSnapshot> {
+export async function authenticateSecurityDemoSession(): Promise<void> {
   const user = requireUser();
   const server = await requireServer();
   const requestId = crypto.randomUUID();
@@ -105,10 +98,9 @@ export async function authenticateSecurityDemoSession(): Promise<SecurityDemoSna
     userSessionKey: userSession.sessionKey,
     expiresAt: userAuth.expiresAt,
   };
-  return snapshot(await service.state());
 }
 
-export async function exchangeEncryptedServiceMessage(): Promise<SecurityDemoSnapshot> {
+export async function exchangeEncryptedServiceMessage(): Promise<void> {
   const session = requireSession();
   const user = requireUser();
   const requestPlaintext = `User ${user.id.slice(0, 12)} requests the protected grade-summary service.`;
@@ -116,7 +108,6 @@ export async function exchangeEncryptedServiceMessage(): Promise<SecurityDemoSna
   await service.service.exchange({
     envelope: encryptedRequest,
   });
-  return snapshot(await service.state());
 }
 
 export async function runForgedCertificateAttack(): Promise<AttackResult> {
@@ -159,10 +150,9 @@ export async function runMitmTamperAttack(): Promise<AttackResult> {
   }
 }
 
-export async function closeSecurityDemoSession(): Promise<SecurityDemoSnapshot> {
+export async function closeSecurityDemoSession(): Promise<void> {
   const session = requireSession();
   await ttp.session.close({ sessionId: session.sessionId });
   await service.server.closeSession();
   state.session = undefined;
-  return snapshot(await service.state());
 }

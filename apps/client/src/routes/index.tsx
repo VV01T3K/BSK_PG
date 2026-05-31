@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import type React from "react";
+import type { ReactNode } from "react";
 import {
   ActivityIcon,
   AlertTriangleIcon,
@@ -20,14 +20,16 @@ import {
   authenticateSecurityDemoSession,
   closeSecurityDemoSession,
   exchangeEncryptedServiceMessage,
-  getSecurityDemoState,
   registerSecurityDemoRoles,
   resetSecurityDemo,
   runForgedCertificateAttack,
   runMitmTamperAttack,
 } from "#/demo/actions";
-import type { SecurityDemoSnapshot } from "#/demo/types";
+import { clientIdentity } from "#/demo/state";
+import type { EncryptedEnvelope } from "#/demo/types";
 import { serviceQuery, ttpQuery } from "#/api";
+
+const CLIENT_IDENTITY_KEY = ["client-identity"] as const;
 
 export const Route = createFileRoute("/")({
   component: SecurityDemoDashboard,
@@ -35,31 +37,24 @@ export const Route = createFileRoute("/")({
 
 function SecurityDemoDashboard() {
   const queryClient = useQueryClient();
-  const stateQuery = useQuery({
-    queryKey: serviceQuery.state.queryKey(),
-    queryFn: () => getSecurityDemoState(),
-  });
+  const serverQuery = useQuery(serviceQuery.state.queryOptions());
+  const identityQuery = useQuery({ queryKey: CLIENT_IDENTITY_KEY, queryFn: () => clientIdentity() });
   const healthQuery = useQuery({
     ...ttpQuery.health.queryOptions(),
     refetchInterval: 5_000,
   });
 
-  const invalidate = async () => {
-    await Promise.all([
+  const invalidate = () =>
+    Promise.all([
       queryClient.invalidateQueries({ queryKey: serviceQuery.state.key() }),
-      queryClient.invalidateQueries({ queryKey: ttpQuery.health.key() }),
+      queryClient.invalidateQueries({ queryKey: CLIENT_IDENTITY_KEY }),
     ]);
-  };
 
-  const forgedMutation = useMutation({ mutationFn: () => runForgedCertificateAttack(), onSuccess: invalidate });
-  const mitmMutation = useMutation({ mutationFn: () => runMitmTamperAttack(), onSuccess: invalidate });
-
+  const forgedMutation = useMutation({ mutationFn: () => runForgedCertificateAttack() });
+  const mitmMutation = useMutation({ mutationFn: () => runMitmTamperAttack() });
   const registerMutation = useMutation({ mutationFn: () => registerSecurityDemoRoles(), onSuccess: invalidate });
   const authMutation = useMutation({ mutationFn: () => authenticateSecurityDemoSession(), onSuccess: invalidate });
-  const exchangeMutation = useMutation({
-    mutationFn: () => exchangeEncryptedServiceMessage(),
-    onSuccess: invalidate,
-  });
+  const exchangeMutation = useMutation({ mutationFn: () => exchangeEncryptedServiceMessage(), onSuccess: invalidate });
   const closeMutation = useMutation({ mutationFn: () => closeSecurityDemoSession(), onSuccess: invalidate });
   const resetMutation = useMutation({
     mutationFn: () => resetSecurityDemo(),
@@ -70,7 +65,9 @@ function SecurityDemoDashboard() {
     },
   });
 
-  const state = stateQuery.data;
+  const server = serverQuery.data;
+  const identity = identityQuery.data;
+  const sessionEstablished = Boolean(identity?.sessionId && server?.sessionEstablished);
   const busy =
     registerMutation.isPending ||
     authMutation.isPending ||
@@ -88,7 +85,6 @@ function SecurityDemoDashboard() {
     mitmMutation.error ||
     closeMutation.error ||
     resetMutation.error ||
-    stateQuery.error ||
     healthQuery.error;
 
   return (
@@ -131,7 +127,7 @@ function SecurityDemoDashboard() {
         <StatusCard
           title="1. Registration"
           description="Client and Server each generate IDs and two RSA-4096 key pairs."
-          complete={Boolean(state?.userRegistered && state.serverRegistered)}
+          complete={Boolean(identity?.userRegistered && server?.registered)}
           icon={<KeyRoundIcon />}
           action={
             <Button onClick={() => registerMutation.mutate()} disabled={busy}>
@@ -143,10 +139,10 @@ function SecurityDemoDashboard() {
         <StatusCard
           title="2. Authentication"
           description="Server and User certificates are validated by the TTP."
-          complete={Boolean(state?.sessionEstablished)}
+          complete={sessionEstablished}
           icon={<ShieldCheckIcon />}
           action={
-            <Button onClick={() => authMutation.mutate()} disabled={busy || !state?.serverRegistered}>
+            <Button onClick={() => authMutation.mutate()} disabled={busy || !server?.registered}>
               <LockIcon />
               Start session
             </Button>
@@ -155,10 +151,10 @@ function SecurityDemoDashboard() {
         <StatusCard
           title="3. Service"
           description="Client and protected Server exchange AES-256-GCM envelopes."
-          complete={Boolean(state?.lastEncryptedResponse)}
+          complete={Boolean(server?.lastEncryptedResponse)}
           icon={<TerminalIcon />}
           action={
-            <Button onClick={() => exchangeMutation.mutate()} disabled={busy || !state?.sessionEstablished}>
+            <Button onClick={() => exchangeMutation.mutate()} disabled={busy || !sessionEstablished}>
               <PlayIcon />
               Exchange data
             </Button>
@@ -174,11 +170,11 @@ function SecurityDemoDashboard() {
               <Button
                 variant="secondary"
                 onClick={() => forgedMutation.mutate()}
-                disabled={busy || !state?.serverRegistered}
+                disabled={busy || !server?.registered}
               >
                 Forged cert
               </Button>
-              <Button variant="secondary" onClick={() => mitmMutation.mutate()} disabled={busy || !state?.sessionEstablished}>
+              <Button variant="secondary" onClick={() => mitmMutation.mutate()} disabled={busy || !sessionEstablished}>
                 Tamper
               </Button>
             </div>
@@ -193,14 +189,14 @@ function SecurityDemoDashboard() {
             <CardDescription>Short fingerprints keep the presentation readable.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <Evidence label="User ID" value={state?.userId} />
-            <Evidence label="User certificate" value={state?.userCertificateFingerprint} />
-            <Evidence label="Server ID" value={state?.serverId} />
-            <Evidence label="Server certificate" value={state?.serverCertificateFingerprint} />
-            <Evidence label="Session ID" value={state?.sessionId} />
-            <Evidence label="Expires" value={state?.sessionExpiresAt} />
+            <Evidence label="User ID" value={identity?.userId} />
+            <Evidence label="User certificate" value={identity?.userCertificateFingerprint} />
+            <Evidence label="Server ID" value={server?.serverId} />
+            <Evidence label="Server certificate" value={server?.certificateFingerprint} />
+            <Evidence label="Session ID" value={identity?.sessionId} />
+            <Evidence label="Expires" value={identity?.sessionExpiresAt ?? server?.sessionExpiresAt} />
             <div className="flex flex-wrap gap-2 pt-2">
-              <Button variant="outline" onClick={() => closeMutation.mutate()} disabled={busy || !state?.sessionEstablished}>
+              <Button variant="outline" onClick={() => closeMutation.mutate()} disabled={busy || !sessionEstablished}>
                 <StopCircleIcon />
                 Close session
               </Button>
@@ -218,10 +214,10 @@ function SecurityDemoDashboard() {
             <CardDescription>Plaintext is shown only as demo evidence; transfer payloads are encrypted.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 text-sm lg:grid-cols-2">
-            <PayloadBlock title="User plaintext request" value={state?.lastPlainRequest} />
-            <PayloadBlock title="Encrypted request envelope" value={formatEnvelope(state?.lastEncryptedRequest)} />
-            <PayloadBlock title="Server plaintext response" value={state?.lastPlainResponse} />
-            <PayloadBlock title="Encrypted response envelope" value={formatEnvelope(state?.lastEncryptedResponse)} />
+            <PayloadBlock title="User plaintext request" value={server?.lastPlainRequest} />
+            <PayloadBlock title="Encrypted request envelope" value={formatEnvelope(server?.lastEncryptedRequest)} />
+            <PayloadBlock title="Server plaintext response" value={server?.lastPlainResponse} />
+            <PayloadBlock title="Encrypted response envelope" value={formatEnvelope(server?.lastEncryptedResponse)} />
           </CardContent>
         </Card>
       </section>
@@ -261,8 +257,8 @@ function StatusCard({
   title: string;
   description: string;
   complete: boolean;
-  icon: React.ReactNode;
-  action: React.ReactNode;
+  icon: ReactNode;
+  action: ReactNode;
 }) {
   return (
     <Card className="rounded-lg">
@@ -308,7 +304,7 @@ function AttackResult({ label, ok, message }: { label: string; ok?: boolean; mes
   );
 }
 
-function formatEnvelope(envelope?: SecurityDemoSnapshot["lastEncryptedRequest"]): string | undefined {
+function formatEnvelope(envelope?: EncryptedEnvelope): string | undefined {
   if (!envelope) {
     return undefined;
   }
