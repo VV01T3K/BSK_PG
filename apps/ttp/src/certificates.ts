@@ -1,12 +1,15 @@
+import { randomHex } from "@bsk/crypto";
 import forge from "node-forge";
-import { ca, compactPem, newRandomHex } from "./crypto.js";
+import { ca } from "./crypto.js";
 import { principalKey, principals } from "./state.js";
 import type { PrincipalRecord, Role } from "./types.js";
+
+const compactPem = (pem: string) => pem.replace(/\s+/g, "");
 
 export function issueCertificate(role: Role, subjectId: string, exchangePublicKeyPem: string): string {
   const cert = forge.pki.createCertificate();
   cert.publicKey = forge.pki.publicKeyFromPem(exchangePublicKeyPem);
-  cert.serialNumber = newRandomHex(16);
+  cert.serialNumber = randomHex(16);
   cert.validity.notBefore = new Date();
   cert.validity.notAfter = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   cert.setSubject([

@@ -1,9 +1,8 @@
+import type { RsaPair } from "@bsk/crypto";
+
 export type { EncryptedEnvelope, ServiceServerSnapshot } from "server";
 
-export interface RsaKeyPair {
-  publicKeyPem: string;
-  privateKey: CryptoKey;
-}
+export type RsaKeyPair = RsaPair;
 
 export interface PrincipalState {
   id: string;

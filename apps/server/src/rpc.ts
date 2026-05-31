@@ -1,7 +1,14 @@
 import { randomUUID } from "node:crypto";
+import {
+  decryptAesGcm,
+  encryptAesGcm,
+  generateRsaPair,
+  rsaDecryptBase64,
+  rsaEncryptBase64,
+  sha256Hex,
+} from "@bsk/crypto";
 import { createRpcClient } from "@bsk/rpc/client";
 import { ORPCError, os, type } from "@orpc/server";
-import { decryptAesGcm, decryptWithPrivateKey, encryptAesGcm, encryptForTtp, fingerprint, generateRsaPair, sha256 } from "./crypto.js";
 import { log, readLogs, requireRegisteredServer, requireSessionKey, resetServiceServerStateForTests, snapshot, state } from "./state.js";
 import type { EncryptedEnvelope, ServiceServerSnapshot } from "./types.js";
 import type { TtpRouter } from "ttp";
@@ -36,12 +43,12 @@ export const serviceRouter = {
     register: os.handler(async (): Promise<ServiceServerSnapshot> => {
       try {
         const ttpPublicKeyPem = (await ttp.publicKey()).publicKeyPem;
-        const serverId = sha256(`server-${randomUUID()}`);
+        const serverId = sha256Hex(`server-${randomUUID()}`);
         const authKeyPair = generateRsaPair();
         const exchangeKeyPair = generateRsaPair();
         const registration = await ttp.register({
           role: "server",
-          encryptedId: encryptForTtp(ttpPublicKeyPem, serverId),
+          encryptedId: rsaEncryptBase64(ttpPublicKeyPem, serverId),
           publicKeys: {
             authPublicKeyPem: authKeyPair.publicKeyPem,
             exchangePublicKeyPem: exchangeKeyPair.publicKeyPem,
@@ -56,7 +63,7 @@ export const serviceRouter = {
         state.sessionKey = undefined;
         state.sessionExpiresAt = undefined;
 
-        log("registered with TTP", `certificate ${fingerprint(registration.certificatePem)}`);
+        log("registered with TTP", `certificate ${snapshot().certificateFingerprint}`);
         return snapshot();
       } catch (error) {
         reject("BAD_REQUEST", error);
@@ -91,7 +98,7 @@ export const serviceRouter = {
         try {
           requireRegisteredServer();
           const decrypted = JSON.parse(
-            decryptWithPrivateKey(state.exchangeKeyPair!.privateKeyPem, input.encryptedSessionKeyForServer),
+            rsaDecryptBase64(state.exchangeKeyPair!.privateKeyPem, input.encryptedSessionKeyForServer),
           ) as { sessionId: string; sessionKey: string };
           if (decrypted.sessionId !== input.sessionId) {
             throw new Error("session key envelope does not match session id");

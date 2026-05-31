@@ -1,6 +1,14 @@
+import {
+  decryptHybridWithPrivateKey,
+  newSessionKey,
+  randomHex,
+  rsaDecryptBase64,
+  rsaEncryptBase64,
+  RSA_BITS,
+} from "@bsk/crypto";
 import { ORPCError, os, type } from "@orpc/server";
 import { issueCertificate, validateCertificate } from "./certificates.js";
-import { ca, decryptHybridWithTtpPrivateKey, decryptWithTtpPrivateKey, encryptForPublicKey, newRandomHex, newSessionKey, RSA_BITS } from "./crypto.js";
+import { ca } from "./crypto.js";
 import { log, principalKey, principals, readLogs, sessions } from "./state.js";
 import type { PrincipalRecord, Role } from "./types.js";
 
@@ -51,7 +59,7 @@ export const ttpRouter = {
         throw new Error("role must be user or server");
       }
 
-      const subjectId = decryptWithTtpPrivateKey(input.encryptedId);
+      const subjectId = rsaDecryptBase64(ca.privateKeyPem, input.encryptedId);
       const issuedAt = new Date().toISOString();
       const certificatePem = issueCertificate(input.role, subjectId, input.publicKeys.exchangePublicKeyPem);
 
@@ -90,7 +98,7 @@ export const ttpRouter = {
 
     user: os.input(type<UserAuthInput>()).handler(({ input }) => {
       try {
-        const material = JSON.parse(decryptHybridWithTtpPrivateKey(input.encryptedAuthMaterial)) as {
+        const material = JSON.parse(decryptHybridWithPrivateKey(ca.privateKeyPem, input.encryptedAuthMaterial)) as {
           userId: string;
           userCertificatePem: string;
           serverId: string;
@@ -100,7 +108,7 @@ export const ttpRouter = {
         const user = validateCertificate("user", material.userId, material.userCertificatePem);
         const server = validateCertificate("server", material.serverId, material.serverCertificatePem);
 
-        const sessionId = newRandomHex(16);
+        const sessionId = randomHex(16);
         const sessionKey = newSessionKey();
         const createdAt = new Date().toISOString();
         const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
@@ -116,14 +124,14 @@ export const ttpRouter = {
 
         log("ttp", "session key issued", `session ${sessionId} for request ${material.requestId}`);
 
-        const encryptedSessionKeyForUser = encryptForPublicKey(user.publicKeys.exchangePublicKeyPem, {
+        const encryptedSessionKeyForUser = rsaEncryptBase64(user.publicKeys.exchangePublicKeyPem, JSON.stringify({
           sessionId,
           sessionKey,
-        });
-        const encryptedSessionKeyForServer = encryptForPublicKey(server.publicKeys.exchangePublicKeyPem, {
+        }));
+        const encryptedSessionKeyForServer = rsaEncryptBase64(server.publicKeys.exchangePublicKeyPem, JSON.stringify({
           sessionId,
           sessionKey,
-        });
+        }));
 
         return {
           ok: true as const,

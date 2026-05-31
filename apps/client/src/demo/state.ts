@@ -1,4 +1,4 @@
-import { fingerprint } from "./browser-crypto";
+import { fingerprint } from "@bsk/crypto";
 import type { ClientSessionState, PrincipalState } from "./types";
 
 /** Browser-held secrets only — never rendered, derived public fields are exposed via clientIdentity(). */
@@ -13,11 +13,11 @@ export function clearClientState() {
 }
 
 /** The browser-held side of the demo, derived from local secrets only (no server data). */
-export async function clientIdentity() {
+export function clientIdentity() {
   return {
     userRegistered: Boolean(state.user),
     userId: state.user?.id,
-    userCertificateFingerprint: state.user ? await fingerprint(state.user.certificatePem) : undefined,
+    userCertificateFingerprint: state.user ? fingerprint(state.user.certificatePem) : undefined,
     sessionId: state.session?.sessionId,
     sessionExpiresAt: state.session?.expiresAt,
   };

@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@bsk/crypto": "workspace:*",
     "@bsk/rpc": "workspace:*",
     "@orpc/server": "^1.14.4",
     "ttp": "workspace:*"

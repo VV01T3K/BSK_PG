@@ -1,5 +1,5 @@
 import { createFileLogger, type EventLogEntry } from "@bsk/rpc/log";
-import { fingerprint, type RsaPair } from "./crypto.js";
+import { fingerprint, type RsaPair } from "@bsk/crypto";
 import type { EncryptedEnvelope, ServiceServerSnapshot } from "./types.js";
 
 type ServiceServerState = {

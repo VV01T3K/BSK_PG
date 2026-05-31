@@ -1,9 +1,6 @@
-export interface EncryptedEnvelope {
-  sessionId: string;
-  iv: string;
-  ciphertext: string;
-  authTag: string;
-}
+import type { EncryptedEnvelope } from "@bsk/crypto";
+
+export type { EncryptedEnvelope };
 
 export interface ServiceServerSnapshot {
   registered: boolean;

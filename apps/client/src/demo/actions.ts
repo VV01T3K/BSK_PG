@@ -1,13 +1,13 @@
-import { service, ttp } from "#/api";
 import {
-  decryptRsaOaepBase64,
   encryptAesGcm,
-  encryptLargePayloadForTtp,
-  encryptRsaOaepBase64,
-  generateRsaKeyPair,
-  randomIdSeed,
+  encryptHybridForPublicKey,
+  generateRsaPair,
+  randomHex,
+  rsaDecryptBase64,
+  rsaEncryptBase64,
   sha256Hex,
-} from "./browser-crypto";
+} from "@bsk/crypto";
+import { service, ttp } from "#/api";
 import { clearClientState, requireSession, requireUser, state } from "./state";
 import type { AttackResult, EncryptedEnvelope, PrincipalState, ServiceServerSnapshot } from "./types";
 
@@ -25,13 +25,13 @@ async function requireServer(): Promise<ServiceServerSnapshot & { serverId: stri
 }
 
 async function registerUser(): Promise<PrincipalState> {
-  const id = await sha256Hex(randomIdSeed("user"));
+  const id = sha256Hex(`user-${randomHex(16)}`);
   const ttpPublicKeyPem = await getTtpPublicKey();
-  const authKeyPair = await generateRsaKeyPair();
-  const exchangeKeyPair = await generateRsaKeyPair();
+  const authKeyPair = generateRsaPair();
+  const exchangeKeyPair = generateRsaPair();
   const registration = await ttp.register({
     role: "user",
-    encryptedId: await encryptRsaOaepBase64(ttpPublicKeyPem, id),
+    encryptedId: rsaEncryptBase64(ttpPublicKeyPem, id),
     publicKeys: {
       authPublicKeyPem: authKeyPair.publicKeyPem,
       exchangePublicKeyPem: exchangeKeyPair.publicKeyPem,
@@ -42,13 +42,6 @@ async function registerUser(): Promise<PrincipalState> {
     exchangeKeyPair,
     certificatePem: registration.certificatePem,
     issuedAt: registration.issuedAt,
-  };
-}
-
-async function decryptSessionKey(user: PrincipalState, encryptedSessionKey: string): Promise<{ sessionId: string; sessionKey: string }> {
-  return JSON.parse(await decryptRsaOaepBase64(user.exchangeKeyPair.privateKey, encryptedSessionKey)) as {
-    sessionId: string;
-    sessionKey: string;
   };
 }
 
@@ -79,10 +72,12 @@ export async function authenticateSecurityDemoSession(): Promise<void> {
     requestId,
   };
   const userAuth = await ttp.auth.user({
-    encryptedAuthMaterial: await encryptLargePayloadForTtp(ttpPublicKeyPem, JSON.stringify(authMaterial)),
+    encryptedAuthMaterial: encryptHybridForPublicKey(ttpPublicKeyPem, JSON.stringify(authMaterial)),
   });
 
-  const userSession = await decryptSessionKey(user, userAuth.encryptedSessionKeyForUser);
+  const userSession = JSON.parse(
+    rsaDecryptBase64(user.exchangeKeyPair.privateKeyPem, userAuth.encryptedSessionKeyForUser),
+  ) as { sessionId: string; sessionKey: string };
   if (userSession.sessionId !== userAuth.sessionId) {
     throw new Error("TTP returned inconsistent session identifiers");
   }
@@ -104,7 +99,7 @@ export async function exchangeEncryptedServiceMessage(): Promise<void> {
   const session = requireSession();
   const user = requireUser();
   const requestPlaintext = `User ${user.id.slice(0, 12)} requests the protected grade-summary service.`;
-  const encryptedRequest = await encryptAesGcm(session.sessionId, session.userSessionKey, requestPlaintext);
+  const encryptedRequest = encryptAesGcm(session.sessionId, session.userSessionKey, requestPlaintext);
   await service.service.exchange({
     envelope: encryptedRequest,
   });
@@ -117,7 +112,7 @@ export async function runForgedCertificateAttack(): Promise<AttackResult> {
 
   try {
     await ttp.auth.user({
-      encryptedAuthMaterial: await encryptLargePayloadForTtp(
+      encryptedAuthMaterial: encryptHybridForPublicKey(
         ttpPublicKeyPem,
         JSON.stringify({
           userId: user.id,
@@ -136,7 +131,7 @@ export async function runForgedCertificateAttack(): Promise<AttackResult> {
 
 export async function runMitmTamperAttack(): Promise<AttackResult> {
   const session = requireSession();
-  const envelope = await encryptAesGcm(session.sessionId, session.userSessionKey, "Tamper check message");
+  const envelope = encryptAesGcm(session.sessionId, session.userSessionKey, "Tamper check message");
   const tampered: EncryptedEnvelope = {
     ...envelope,
     ciphertext: btoa(`${envelope.ciphertext}.`),

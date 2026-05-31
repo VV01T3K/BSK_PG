@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@bsk/crypto": "workspace:*",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-query": "latest",
     "@tanstack/react-router": "latest",

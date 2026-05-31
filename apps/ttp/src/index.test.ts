@@ -1,13 +1,13 @@
 import {
-  constants,
-  createCipheriv,
-  createDecipheriv,
-  createHash,
-  generateKeyPairSync,
-  privateDecrypt,
-  publicEncrypt,
-  randomBytes,
-} from "node:crypto";
+  decryptAesGcm,
+  encryptAesGcm,
+  encryptHybridForPublicKey,
+  generateRsaPair,
+  newSessionKey,
+  rsaDecryptBase64,
+  rsaEncryptBase64,
+  sha256Hex,
+} from "@bsk/crypto";
 import { createRouterClient } from "@orpc/server";
 import { beforeEach, describe, expect, it } from "vitest";
 import { resetTtpStateForTests, ttpRouter } from "./index.js";
@@ -22,87 +22,33 @@ interface PrincipalFixture {
 
 const ttp = createRouterClient(ttpRouter);
 
-function sha256(value: string): string {
-  return createHash("sha256").update(value).digest("hex");
-}
-
-function generateRsaPair() {
-  return generateKeyPairSync("rsa", {
-    modulusLength: 4096,
-    publicKeyEncoding: {
-      type: "spki",
-      format: "pem",
-    },
-    privateKeyEncoding: {
-      type: "pkcs8",
-      format: "pem",
-    },
-  });
-}
-
 async function ttpPublicKey(): Promise<string> {
   const payload = await ttp.publicKey();
   return payload.publicKeyPem;
 }
 
-function encryptForTtp(publicKeyPem: string, plaintext: string): string {
-  return publicEncrypt(
-    {
-      key: publicKeyPem,
-      padding: constants.RSA_PKCS1_OAEP_PADDING,
-      oaepHash: "sha256",
-    },
-    Buffer.from(plaintext, "utf8"),
-  ).toString("base64");
-}
-
-function encryptLargePayloadForTtp(publicKeyPem: string, plaintext: string): string {
-  const key = randomBytes(32);
-  const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", key, iv);
-  const ciphertext = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
-
-  return Buffer.from(
-    JSON.stringify({
-      encryptedKey: encryptForTtp(publicKeyPem, key.toString("base64")),
-      iv: iv.toString("base64"),
-      ciphertext: ciphertext.toString("base64"),
-      authTag: cipher.getAuthTag().toString("base64"),
-    }),
-  ).toString("base64");
-}
-
 function decryptSession(privateKeyPem: string, payloadBase64: string): { sessionId: string; sessionKey: string } {
-  return JSON.parse(
-    privateDecrypt(
-      {
-        key: privateKeyPem,
-        padding: constants.RSA_PKCS1_OAEP_PADDING,
-        oaepHash: "sha256",
-      },
-      Buffer.from(payloadBase64, "base64"),
-    ).toString("utf8"),
-  );
+  return JSON.parse(rsaDecryptBase64(privateKeyPem, payloadBase64)) as { sessionId: string; sessionKey: string };
 }
 
 async function registerPrincipal(role: Role): Promise<PrincipalFixture> {
   const publicKeyPem = await ttpPublicKey();
-  const id = sha256(`${role}-test-id`);
+  const id = sha256Hex(`${role}-test-id`);
   const auth = generateRsaPair();
   const exchange = generateRsaPair();
   const payload = await ttp.register({
     role,
-    encryptedId: encryptForTtp(publicKeyPem, id),
+    encryptedId: rsaEncryptBase64(publicKeyPem, id),
     publicKeys: {
-      authPublicKeyPem: auth.publicKey,
-      exchangePublicKeyPem: exchange.publicKey,
+      authPublicKeyPem: auth.publicKeyPem,
+      exchangePublicKeyPem: exchange.publicKeyPem,
     },
   });
 
   return {
     id: payload.subjectId,
     certificatePem: payload.certificatePem,
-    exchangePrivateKeyPem: exchange.privateKey,
+    exchangePrivateKeyPem: exchange.privateKeyPem,
   };
 }
 
@@ -125,7 +71,7 @@ describe("TTP authority", () => {
 
     const publicKeyPem = await ttpPublicKey();
     const payload = await ttp.auth.user({
-      encryptedAuthMaterial: encryptLargePayloadForTtp(
+      encryptedAuthMaterial: encryptHybridForPublicKey(
         publicKeyPem,
         JSON.stringify({
           userId: user.id,
@@ -154,7 +100,7 @@ describe("TTP authority", () => {
 
     await expect(
       ttp.auth.user({
-        encryptedAuthMaterial: encryptLargePayloadForTtp(
+        encryptedAuthMaterial: encryptHybridForPublicKey(
           publicKeyPem,
           JSON.stringify({
             userId: user.id,
@@ -173,7 +119,7 @@ describe("TTP authority", () => {
     const server = await registerPrincipal("server");
     const publicKeyPem = await ttpPublicKey();
     const payload = await ttp.auth.user({
-      encryptedAuthMaterial: encryptLargePayloadForTtp(
+      encryptedAuthMaterial: encryptHybridForPublicKey(
         publicKeyPem,
         JSON.stringify({
           userId: user.id,
@@ -192,15 +138,9 @@ describe("TTP authority", () => {
   });
 
   it("performs an AES-256-GCM encryption and decryption round trip", () => {
-    const key = randomBytes(32);
-    const iv = randomBytes(12);
-    const cipher = createCipheriv("aes-256-gcm", key, iv);
-    const ciphertext = Buffer.concat([cipher.update("classified service payload", "utf8"), cipher.final()]);
-    const authTag = cipher.getAuthTag();
-
-    const decipher = createDecipheriv("aes-256-gcm", key, iv);
-    decipher.setAuthTag(authTag);
-    const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
+    const key = newSessionKey();
+    const envelope = encryptAesGcm("session-1", key, "classified service payload");
+    const plaintext = decryptAesGcm(key, envelope);
 
     expect(plaintext).toBe("classified service payload");
   });
