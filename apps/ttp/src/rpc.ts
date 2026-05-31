@@ -1,9 +1,6 @@
 import {
-  decryptHybridWithPrivateKey,
-  newSessionKey,
-  randomHex,
-  rsaDecryptBase64,
-  rsaEncryptBase64,
+  random,
+  rsa,
   RSA_BITS,
   type SessionTicket,
 } from "@bsk/crypto";
@@ -64,7 +61,7 @@ export const ttpRouter = {
 
   register: os.input(type<RegisterInput>()).handler(({ input }) => {
     try {
-      const subjectId = rsaDecryptBase64(ca.privateKeyPem, input.encryptedId);
+      const subjectId = rsa.privateKey(ca.privateKeyPem).decrypt(input.encryptedId);
       const issuedAt = new Date().toISOString();
       const principal = {
         role: input.role,
@@ -111,7 +108,7 @@ export const ttpRouter = {
     user: os.input(type<UserAuthInput>()).handler(({ input }) => {
       try {
         const material = JSON.parse(
-          decryptHybridWithPrivateKey(ca.privateKeyPem, input.encryptedAuthMaterial),
+          rsa.privateKey(ca.privateKeyPem).decryptHybrid(input.encryptedAuthMaterial),
         ) as UserAuthMaterial;
         const user = validateCertificate({
           role: "user",
@@ -124,8 +121,8 @@ export const ttpRouter = {
           certificatePem: material.serverCertificatePem,
         });
         const ticket: SessionTicket = {
-          sessionId: randomHex(16),
-          sessionKey: newSessionKey(),
+          sessionId: random.hex(16),
+          sessionKey: random.sessionKey(),
         };
         const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
 
@@ -144,8 +141,12 @@ export const ttpRouter = {
         return {
           ok: true as const,
           sessionId: ticket.sessionId,
-          encryptedSessionKeyForUser: rsaEncryptBase64(user.publicKeys.exchangePublicKeyPem, ticketPayload),
-          encryptedSessionKeyForServer: rsaEncryptBase64(server.publicKeys.exchangePublicKeyPem, ticketPayload),
+          encryptedSessionKeyForUser: rsa
+            .publicKey(user.publicKeys.exchangePublicKeyPem)
+            .encrypt(ticketPayload),
+          encryptedSessionKeyForServer: rsa
+            .publicKey(server.publicKeys.exchangePublicKeyPem)
+            .encrypt(ticketPayload),
           expiresAt,
         };
       } catch (error) {

@@ -1,5 +1,5 @@
 import { createFileLogger, type EventLogEntry } from "@bsk/rpc/log";
-import { fingerprint, type RsaPair } from "@bsk/crypto";
+import { hash, type RsaPair } from "@bsk/crypto";
 import type { EncryptedEnvelope, ServiceServerSnapshot } from "./types.js";
 
 type ServiceServerState = {
@@ -38,7 +38,7 @@ export function snapshot(): ServiceServerSnapshot {
     registered: Boolean(state.serverId),
     serverId: state.serverId,
     certificatePem: state.certificatePem,
-    certificateFingerprint: state.certificatePem ? fingerprint(state.certificatePem) : undefined,
+    certificateFingerprint: state.certificatePem ? hash.of(state.certificatePem).fingerprint() : undefined,
     issuedAt: state.issuedAt,
     sessionEstablished: Boolean(state.sessionId),
     sessionId: state.sessionId,

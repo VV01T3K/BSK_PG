@@ -1,11 +1,8 @@
 import { randomUUID } from "node:crypto";
 import {
-  decryptAesGcm,
-  encryptAesGcm,
-  generateRsaPair,
-  rsaDecryptBase64,
-  rsaEncryptBase64,
-  sha256Hex,
+  aesGcm,
+  hash,
+  rsa,
   type SessionTicket,
 } from "@bsk/crypto";
 import { createRpcClient } from "@bsk/rpc/client";
@@ -44,12 +41,12 @@ export const serviceRouter = {
     register: os.handler(async (): Promise<ServiceServerSnapshot> => {
       try {
         const ttpPublicKeyPem = (await ttp.publicKey()).publicKeyPem;
-        const serverId = sha256Hex(`server-${randomUUID()}`);
-        const authKeyPair = generateRsaPair();
-        const exchangeKeyPair = generateRsaPair();
+        const serverId = hash.of(`server-${randomUUID()}`).sha256Hex();
+        const authKeyPair = rsa.generatePair();
+        const exchangeKeyPair = rsa.generatePair();
         const registration = await ttp.register({
           role: "server",
-          encryptedId: rsaEncryptBase64(ttpPublicKeyPem, serverId),
+          encryptedId: rsa.publicKey(ttpPublicKeyPem).encrypt(serverId),
           publicKeys: {
             authPublicKeyPem: authKeyPair.publicKeyPem,
             exchangePublicKeyPem: exchangeKeyPair.publicKeyPem,
@@ -99,7 +96,9 @@ export const serviceRouter = {
         try {
           requireRegisteredServer();
           const ticket = JSON.parse(
-            rsaDecryptBase64(state.exchangeKeyPair!.privateKeyPem, input.encryptedSessionKeyForServer),
+            rsa
+              .privateKey(state.exchangeKeyPair!.privateKeyPem)
+              .decrypt(input.encryptedSessionKeyForServer),
           ) as SessionTicket;
           if (ticket.sessionId !== input.sessionId) {
             throw new Error("session key envelope does not match session id");
@@ -128,12 +127,10 @@ export const serviceRouter = {
     exchange: os.input(type<{ envelope: EncryptedEnvelope }>()).handler(({ input }) => {
       try {
         const sessionKey = requireSessionKey();
-        if (input.envelope.sessionId !== state.sessionId) {
-          throw new Error("encrypted envelope session id does not match active session");
-        }
-        const plaintext = decryptAesGcm(sessionKey, input.envelope);
+        const sessionCipher = aesGcm.withKey(sessionKey).forSession(state.sessionId!);
+        const plaintext = sessionCipher.decrypt(input.envelope);
         const responsePlaintext = `Protected service accepted encrypted request: ${plaintext}`;
-        const encryptedResponse = encryptAesGcm(sessionKey, responsePlaintext, state.sessionId!);
+        const encryptedResponse = sessionCipher.encrypt(responsePlaintext);
 
         state.lastPlainRequest = plaintext;
         state.lastPlainResponse = responsePlaintext;

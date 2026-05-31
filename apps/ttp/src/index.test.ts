@@ -1,12 +1,8 @@
 import {
-  decryptAesGcm,
-  encryptAesGcm,
-  encryptHybridForPublicKey,
-  generateRsaPair,
-  newSessionKey,
-  rsaDecryptBase64,
-  rsaEncryptBase64,
-  sha256Hex,
+  aesGcm,
+  hash,
+  random,
+  rsa,
   type SessionTicket,
 } from "@bsk/crypto";
 import { createRouterClient } from "@orpc/server";
@@ -30,12 +26,12 @@ async function ttpPublicKey(): Promise<string> {
 
 async function registerPrincipal(role: Role): Promise<PrincipalFixture> {
   const publicKeyPem = await ttpPublicKey();
-  const id = sha256Hex(`${role}-test-id`);
-  const auth = generateRsaPair();
-  const exchange = generateRsaPair();
+  const id = hash.of(`${role}-test-id`).sha256Hex();
+  const auth = rsa.generatePair();
+  const exchange = rsa.generatePair();
   const payload = await ttp.register({
     role,
-    encryptedId: rsaEncryptBase64(publicKeyPem, id),
+    encryptedId: rsa.publicKey(publicKeyPem).encrypt(id),
     publicKeys: {
       authPublicKeyPem: auth.publicKeyPem,
       exchangePublicKeyPem: exchange.publicKeyPem,
@@ -68,24 +64,29 @@ describe("TTP authority", () => {
 
     const publicKeyPem = await ttpPublicKey();
     const payload = await ttp.auth.user({
-      encryptedAuthMaterial: encryptHybridForPublicKey(
-        publicKeyPem,
-        JSON.stringify({
-          userId: user.id,
-          userCertificatePem: user.certificatePem,
-          serverId: server.id,
-          serverCertificatePem: server.certificatePem,
-          requestId,
-        }),
-      ),
+      encryptedAuthMaterial: rsa
+        .publicKey(publicKeyPem)
+        .encryptHybrid(
+          JSON.stringify({
+            userId: user.id,
+            userCertificatePem: user.certificatePem,
+            serverId: server.id,
+            serverCertificatePem: server.certificatePem,
+            requestId,
+          }),
+        ),
     });
 
     expect(payload.ok).toBe(true);
     const userSession = JSON.parse(
-      rsaDecryptBase64(user.exchangePrivateKeyPem, payload.encryptedSessionKeyForUser),
+      rsa
+        .privateKey(user.exchangePrivateKeyPem)
+        .decrypt(payload.encryptedSessionKeyForUser),
     ) as SessionTicket;
     const serverSession = JSON.parse(
-      rsaDecryptBase64(server.exchangePrivateKeyPem, payload.encryptedSessionKeyForServer),
+      rsa
+        .privateKey(server.exchangePrivateKeyPem)
+        .decrypt(payload.encryptedSessionKeyForServer),
     ) as SessionTicket;
 
     expect(userSession.sessionId).toBe(payload.sessionId);
@@ -101,16 +102,17 @@ describe("TTP authority", () => {
 
     await expect(
       ttp.auth.user({
-        encryptedAuthMaterial: encryptHybridForPublicKey(
-          publicKeyPem,
-          JSON.stringify({
-            userId: user.id,
-            userCertificatePem: server.certificatePem,
-            serverId: server.id,
-            serverCertificatePem: server.certificatePem,
-            requestId: "forged-cert",
-          }),
-        ),
+        encryptedAuthMaterial: rsa
+          .publicKey(publicKeyPem)
+          .encryptHybrid(
+            JSON.stringify({
+              userId: user.id,
+              userCertificatePem: server.certificatePem,
+              serverId: server.id,
+              serverCertificatePem: server.certificatePem,
+              requestId: "forged-cert",
+            }),
+          ),
       }),
     ).rejects.toThrow();
   });
@@ -120,16 +122,17 @@ describe("TTP authority", () => {
     const server = await registerPrincipal("server");
     const publicKeyPem = await ttpPublicKey();
     const payload = await ttp.auth.user({
-      encryptedAuthMaterial: encryptHybridForPublicKey(
-        publicKeyPem,
-        JSON.stringify({
-          userId: user.id,
-          userCertificatePem: user.certificatePem,
-          serverId: server.id,
-          serverCertificatePem: server.certificatePem,
-          requestId: "close-session",
-        }),
-      ),
+      encryptedAuthMaterial: rsa
+        .publicKey(publicKeyPem)
+        .encryptHybrid(
+          JSON.stringify({
+            userId: user.id,
+            userCertificatePem: user.certificatePem,
+            serverId: server.id,
+            serverCertificatePem: server.certificatePem,
+            requestId: "close-session",
+          }),
+        ),
     });
     const close = await ttp.session.close({
       sessionId: payload.sessionId,
@@ -139,9 +142,12 @@ describe("TTP authority", () => {
   });
 
   it("performs an AES-256-GCM encryption and decryption round trip", () => {
-    const key = newSessionKey();
-    const envelope = encryptAesGcm(key, "classified service payload", "session-1");
-    const plaintext = decryptAesGcm(key, envelope);
+    const key = random.sessionKey();
+    const envelope = aesGcm
+      .withKey(key)
+      .forSession("session-1")
+      .encrypt("classified service payload");
+    const plaintext = aesGcm.withKey(key).decrypt(envelope);
 
     expect(plaintext).toBe("classified service payload");
   });

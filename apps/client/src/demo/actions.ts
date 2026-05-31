@@ -1,11 +1,8 @@
 import {
-  encryptAesGcm,
-  encryptHybridForPublicKey,
-  generateRsaPair,
-  randomHex,
-  rsaDecryptBase64,
-  rsaEncryptBase64,
-  sha256Hex,
+  aesGcm,
+  hash,
+  random,
+  rsa,
   type SessionTicket,
 } from "@bsk/crypto";
 import { service, ttp } from "#/api";
@@ -26,13 +23,13 @@ async function requireServer(): Promise<ServiceServerSnapshot & { serverId: stri
 }
 
 async function registerUser(): Promise<PrincipalState> {
-  const id = sha256Hex(`user-${randomHex(16)}`);
+  const id = hash.of(`user-${random.hex(16)}`).sha256Hex();
   const ttpPublicKeyPem = await getTtpPublicKey();
-  const authKeyPair = generateRsaPair();
-  const exchangeKeyPair = generateRsaPair();
+  const authKeyPair = rsa.generatePair();
+  const exchangeKeyPair = rsa.generatePair();
   const registration = await ttp.register({
     role: "user",
-    encryptedId: rsaEncryptBase64(ttpPublicKeyPem, id),
+    encryptedId: rsa.publicKey(ttpPublicKeyPem).encrypt(id),
     publicKeys: {
       authPublicKeyPem: authKeyPair.publicKeyPem,
       exchangePublicKeyPem: exchangeKeyPair.publicKeyPem,
@@ -73,11 +70,15 @@ export async function authenticateSecurityDemoSession(): Promise<void> {
     requestId,
   };
   const userAuth = await ttp.auth.user({
-    encryptedAuthMaterial: encryptHybridForPublicKey(ttpPublicKeyPem, JSON.stringify(authMaterial)),
+    encryptedAuthMaterial: rsa
+      .publicKey(ttpPublicKeyPem)
+      .encryptHybrid(JSON.stringify(authMaterial)),
   });
 
   const userSession = JSON.parse(
-    rsaDecryptBase64(user.exchangeKeyPair.privateKeyPem, userAuth.encryptedSessionKeyForUser),
+    rsa
+      .privateKey(user.exchangeKeyPair.privateKeyPem)
+      .decrypt(userAuth.encryptedSessionKeyForUser),
   ) as SessionTicket;
   if (userSession.sessionId !== userAuth.sessionId) {
     throw new Error("TTP returned inconsistent session identifiers");
@@ -100,7 +101,10 @@ export async function exchangeEncryptedServiceMessage(): Promise<void> {
   const session = requireSession();
   const user = requireUser();
   const requestPlaintext = `User ${user.id.slice(0, 12)} requests the protected grade-summary service.`;
-  const encryptedRequest = encryptAesGcm(session.userSessionKey, requestPlaintext, session.sessionId);
+  const encryptedRequest = aesGcm
+    .withKey(session.userSessionKey)
+    .forSession(session.sessionId)
+    .encrypt(requestPlaintext);
   await service.service.exchange({
     envelope: encryptedRequest,
   });
@@ -113,16 +117,17 @@ export async function runForgedCertificateAttack(): Promise<AttackResult> {
 
   try {
     await ttp.auth.user({
-      encryptedAuthMaterial: encryptHybridForPublicKey(
-        ttpPublicKeyPem,
-        JSON.stringify({
-          userId: user.id,
-          userCertificatePem: server.certificatePem,
-          serverId: server.serverId,
-          serverCertificatePem: server.certificatePem,
-          requestId: crypto.randomUUID(),
-        }),
-      ),
+      encryptedAuthMaterial: rsa
+        .publicKey(ttpPublicKeyPem)
+        .encryptHybrid(
+          JSON.stringify({
+            userId: user.id,
+            userCertificatePem: server.certificatePem,
+            serverId: server.serverId,
+            serverCertificatePem: server.certificatePem,
+            requestId: crypto.randomUUID(),
+          }),
+        ),
     });
     throw new Error("forged certificate was unexpectedly accepted");
   } catch (error) {
@@ -132,7 +137,10 @@ export async function runForgedCertificateAttack(): Promise<AttackResult> {
 
 export async function runMitmTamperAttack(): Promise<AttackResult> {
   const session = requireSession();
-  const envelope = encryptAesGcm(session.userSessionKey, "Tamper check message", session.sessionId);
+  const envelope = aesGcm
+    .withKey(session.userSessionKey)
+    .forSession(session.sessionId)
+    .encrypt("Tamper check message");
   const tampered: EncryptedEnvelope = {
     ...envelope,
     ciphertext: btoa(`${envelope.ciphertext}.`),

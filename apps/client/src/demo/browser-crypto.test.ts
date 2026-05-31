@@ -1,20 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { decryptAesGcm, encryptAesGcm, generateRsaPair, newSessionKey, rsaDecryptBase64, rsaEncryptBase64, sha256Hex } from "@bsk/crypto";
+import { aesGcm, hash, random, rsa } from "@bsk/crypto";
 
 describe("browser crypto helpers", () => {
   it("hashes with SHA-256", () => {
-    expect(sha256Hex("BSK")).toHaveLength(64);
+    expect(hash.of("BSK").sha256Hex()).toHaveLength(64);
   });
 
   it("encrypts and decrypts RSA-OAEP payloads", () => {
-    const keyPair = generateRsaPair();
-    const encrypted = rsaEncryptBase64(keyPair.publicKeyPem, "secret id");
-    expect(rsaDecryptBase64(keyPair.privateKeyPem, encrypted)).toBe("secret id");
+    const keyPair = rsa.generatePair();
+    const encrypted = rsa.publicKey(keyPair.publicKeyPem).encrypt("secret id");
+    expect(rsa.privateKey(keyPair.privateKeyPem).decrypt(encrypted)).toBe("secret id");
   });
 
   it("encrypts and decrypts AES-GCM envelopes", () => {
-    const sessionKey = newSessionKey();
-    const envelope = encryptAesGcm(sessionKey, "service payload", "session-1");
-    expect(decryptAesGcm(sessionKey, envelope)).toBe("service payload");
+    const sessionKey = random.sessionKey();
+    const envelope = aesGcm
+      .withKey(sessionKey)
+      .forSession("session-1")
+      .encrypt("service payload");
+    expect(aesGcm.withKey(sessionKey).decrypt(envelope)).toBe("service payload");
   });
 });

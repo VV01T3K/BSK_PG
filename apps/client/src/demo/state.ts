@@ -1,4 +1,4 @@
-import { fingerprint } from "@bsk/crypto";
+import { hash } from "@bsk/crypto";
 import type { ClientSessionState, PrincipalState } from "./types";
 
 /** Browser-held secrets only — never rendered, derived public fields are exposed via clientIdentity(). */
@@ -17,7 +17,7 @@ export function clientIdentity() {
   return {
     userRegistered: Boolean(state.user),
     userId: state.user?.id,
-    userCertificateFingerprint: state.user ? fingerprint(state.user.certificatePem) : undefined,
+    userCertificateFingerprint: state.user ? hash.of(state.user.certificatePem).fingerprint() : undefined,
     sessionId: state.session?.sessionId,
     sessionExpiresAt: state.session?.expiresAt,
   };
