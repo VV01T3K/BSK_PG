@@ -14,7 +14,7 @@ describe("browser crypto helpers", () => {
 
   it("encrypts and decrypts AES-GCM envelopes", () => {
     const sessionKey = newSessionKey();
-    const envelope = encryptAesGcm("session-1", sessionKey, "service payload");
+    const envelope = encryptAesGcm(sessionKey, "service payload", "session-1");
     expect(decryptAesGcm(sessionKey, envelope)).toBe("service payload");
   });
 });

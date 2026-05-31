@@ -6,6 +6,7 @@ import {
   rsaDecryptBase64,
   rsaEncryptBase64,
   sha256Hex,
+  type SessionTicket,
 } from "@bsk/crypto";
 import { service, ttp } from "#/api";
 import { clearClientState, requireSession, requireUser, state } from "./state";
@@ -77,7 +78,7 @@ export async function authenticateSecurityDemoSession(): Promise<void> {
 
   const userSession = JSON.parse(
     rsaDecryptBase64(user.exchangeKeyPair.privateKeyPem, userAuth.encryptedSessionKeyForUser),
-  ) as { sessionId: string; sessionKey: string };
+  ) as SessionTicket;
   if (userSession.sessionId !== userAuth.sessionId) {
     throw new Error("TTP returned inconsistent session identifiers");
   }
@@ -99,7 +100,7 @@ export async function exchangeEncryptedServiceMessage(): Promise<void> {
   const session = requireSession();
   const user = requireUser();
   const requestPlaintext = `User ${user.id.slice(0, 12)} requests the protected grade-summary service.`;
-  const encryptedRequest = encryptAesGcm(session.sessionId, session.userSessionKey, requestPlaintext);
+  const encryptedRequest = encryptAesGcm(session.userSessionKey, requestPlaintext, session.sessionId);
   await service.service.exchange({
     envelope: encryptedRequest,
   });
@@ -131,7 +132,7 @@ export async function runForgedCertificateAttack(): Promise<AttackResult> {
 
 export async function runMitmTamperAttack(): Promise<AttackResult> {
   const session = requireSession();
-  const envelope = encryptAesGcm(session.sessionId, session.userSessionKey, "Tamper check message");
+  const envelope = encryptAesGcm(session.userSessionKey, "Tamper check message", session.sessionId);
   const tampered: EncryptedEnvelope = {
     ...envelope,
     ciphertext: btoa(`${envelope.ciphertext}.`),

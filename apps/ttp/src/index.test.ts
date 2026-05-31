@@ -7,6 +7,7 @@ import {
   rsaDecryptBase64,
   rsaEncryptBase64,
   sha256Hex,
+  type SessionTicket,
 } from "@bsk/crypto";
 import { createRouterClient } from "@orpc/server";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -25,10 +26,6 @@ const ttp = createRouterClient(ttpRouter);
 async function ttpPublicKey(): Promise<string> {
   const payload = await ttp.publicKey();
   return payload.publicKeyPem;
-}
-
-function decryptSession(privateKeyPem: string, payloadBase64: string): { sessionId: string; sessionKey: string } {
-  return JSON.parse(rsaDecryptBase64(privateKeyPem, payloadBase64)) as { sessionId: string; sessionKey: string };
 }
 
 async function registerPrincipal(role: Role): Promise<PrincipalFixture> {
@@ -84,8 +81,12 @@ describe("TTP authority", () => {
     });
 
     expect(payload.ok).toBe(true);
-    const userSession = decryptSession(user.exchangePrivateKeyPem, payload.encryptedSessionKeyForUser);
-    const serverSession = decryptSession(server.exchangePrivateKeyPem, payload.encryptedSessionKeyForServer);
+    const userSession = JSON.parse(
+      rsaDecryptBase64(user.exchangePrivateKeyPem, payload.encryptedSessionKeyForUser),
+    ) as SessionTicket;
+    const serverSession = JSON.parse(
+      rsaDecryptBase64(server.exchangePrivateKeyPem, payload.encryptedSessionKeyForServer),
+    ) as SessionTicket;
 
     expect(userSession.sessionId).toBe(payload.sessionId);
     expect(serverSession.sessionId).toBe(payload.sessionId);
@@ -139,7 +140,7 @@ describe("TTP authority", () => {
 
   it("performs an AES-256-GCM encryption and decryption round trip", () => {
     const key = newSessionKey();
-    const envelope = encryptAesGcm("session-1", key, "classified service payload");
+    const envelope = encryptAesGcm(key, "classified service payload", "session-1");
     const plaintext = decryptAesGcm(key, envelope);
 
     expect(plaintext).toBe("classified service payload");

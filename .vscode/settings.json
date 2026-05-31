@@ -1,6 +1,9 @@
 {
   "files.exclude": {
-    ".mise-setup-done": true
+    ".mise-setup-done": true,
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.tanstack": true,
   },
   "files.watcherExclude": {
     "**/routeTree.gen.ts": true

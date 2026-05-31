@@ -14,7 +14,7 @@ function resolveLogPath(filePath: string): string {
   if (isAbsolute(filePath)) {
     return filePath;
   }
-  const baseDir = process.env.LOG_DIR ?? (process.env.NODE_ENV === "test" ? tmpdir() : "logs");
+  const baseDir = process.env.LOG_DIR ?? (process.env.NODE_ENV === "test" ? tmpdir() : "../../logs");
   return join(baseDir, filePath);
 }
 

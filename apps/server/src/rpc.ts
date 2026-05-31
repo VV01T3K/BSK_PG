@@ -6,6 +6,7 @@ import {
   rsaDecryptBase64,
   rsaEncryptBase64,
   sha256Hex,
+  type SessionTicket,
 } from "@bsk/crypto";
 import { createRpcClient } from "@bsk/rpc/client";
 import { ORPCError, os, type } from "@orpc/server";
@@ -97,14 +98,14 @@ export const serviceRouter = {
       .handler(({ input }) => {
         try {
           requireRegisteredServer();
-          const decrypted = JSON.parse(
+          const ticket = JSON.parse(
             rsaDecryptBase64(state.exchangeKeyPair!.privateKeyPem, input.encryptedSessionKeyForServer),
-          ) as { sessionId: string; sessionKey: string };
-          if (decrypted.sessionId !== input.sessionId) {
+          ) as SessionTicket;
+          if (ticket.sessionId !== input.sessionId) {
             throw new Error("session key envelope does not match session id");
           }
-          state.sessionId = input.sessionId;
-          state.sessionKey = decrypted.sessionKey;
+          state.sessionId = ticket.sessionId;
+          state.sessionKey = ticket.sessionKey;
           state.sessionExpiresAt = input.expiresAt;
           log("session key accepted", `session ${input.sessionId}`);
           return snapshot();
@@ -132,7 +133,7 @@ export const serviceRouter = {
         }
         const plaintext = decryptAesGcm(sessionKey, input.envelope);
         const responsePlaintext = `Protected service accepted encrypted request: ${plaintext}`;
-        const encryptedResponse = encryptAesGcm(state.sessionId!, sessionKey, responsePlaintext);
+        const encryptedResponse = encryptAesGcm(sessionKey, responsePlaintext, state.sessionId!);
 
         state.lastPlainRequest = plaintext;
         state.lastPlainResponse = responsePlaintext;

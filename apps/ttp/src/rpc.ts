@@ -5,6 +5,7 @@ import {
   rsaDecryptBase64,
   rsaEncryptBase64,
   RSA_BITS,
+  type SessionTicket,
 } from "@bsk/crypto";
 import { ORPCError, os, type } from "@orpc/server";
 import { issueCertificate, validateCertificate } from "./certificates.js";
@@ -28,6 +29,14 @@ type ServerAuthInput = {
 
 type UserAuthInput = {
   encryptedAuthMaterial: string;
+};
+
+type UserAuthMaterial = {
+  userId: string;
+  userCertificatePem: string;
+  serverId: string;
+  serverCertificatePem: string;
+  requestId: string;
 };
 
 function reject(code: "BAD_REQUEST" | "UNAUTHORIZED" | "NOT_FOUND", error: unknown): never {
@@ -55,18 +64,17 @@ export const ttpRouter = {
 
   register: os.input(type<RegisterInput>()).handler(({ input }) => {
     try {
-      if (input.role !== "user" && input.role !== "server") {
-        throw new Error("role must be user or server");
-      }
-
       const subjectId = rsaDecryptBase64(ca.privateKeyPem, input.encryptedId);
       const issuedAt = new Date().toISOString();
-      const certificatePem = issueCertificate(input.role, subjectId, input.publicKeys.exchangePublicKeyPem);
-
-      principals.set(principalKey(input.role, subjectId), {
+      const principal = {
         role: input.role,
         subjectId,
         publicKeys: input.publicKeys,
+      };
+      const certificatePem = issueCertificate(principal);
+
+      principals.set(principalKey(input.role, subjectId), {
+        ...principal,
         certificatePem,
         issuedAt,
       });
@@ -82,7 +90,11 @@ export const ttpRouter = {
   auth: {
     server: os.input(type<ServerAuthInput>()).handler(({ input }) => {
       try {
-        validateCertificate("server", input.serverId, input.certificatePem);
+        validateCertificate({
+          role: "server",
+          subjectId: input.serverId,
+          certificatePem: input.certificatePem,
+        });
         const response = {
           ok: true,
           requestId: input.requestId,
@@ -98,46 +110,42 @@ export const ttpRouter = {
 
     user: os.input(type<UserAuthInput>()).handler(({ input }) => {
       try {
-        const material = JSON.parse(decryptHybridWithPrivateKey(ca.privateKeyPem, input.encryptedAuthMaterial)) as {
-          userId: string;
-          userCertificatePem: string;
-          serverId: string;
-          serverCertificatePem: string;
-          requestId: string;
+        const material = JSON.parse(
+          decryptHybridWithPrivateKey(ca.privateKeyPem, input.encryptedAuthMaterial),
+        ) as UserAuthMaterial;
+        const user = validateCertificate({
+          role: "user",
+          subjectId: material.userId,
+          certificatePem: material.userCertificatePem,
+        });
+        const server = validateCertificate({
+          role: "server",
+          subjectId: material.serverId,
+          certificatePem: material.serverCertificatePem,
+        });
+        const ticket: SessionTicket = {
+          sessionId: randomHex(16),
+          sessionKey: newSessionKey(),
         };
-        const user = validateCertificate("user", material.userId, material.userCertificatePem);
-        const server = validateCertificate("server", material.serverId, material.serverCertificatePem);
-
-        const sessionId = randomHex(16);
-        const sessionKey = newSessionKey();
-        const createdAt = new Date().toISOString();
         const expiresAt = new Date(Date.now() + SESSION_TTL_MS).toISOString();
 
-        sessions.set(sessionId, {
-          sessionId,
+        sessions.set(ticket.sessionId, {
+          sessionId: ticket.sessionId,
           userId: user.subjectId,
           serverId: server.subjectId,
-          sessionKey,
-          createdAt,
+          sessionKey: ticket.sessionKey,
+          createdAt: new Date().toISOString(),
           expiresAt,
         });
 
-        log("ttp", "session key issued", `session ${sessionId} for request ${material.requestId}`);
+        log("ttp", "session key issued", `session ${ticket.sessionId} for request ${material.requestId}`);
 
-        const encryptedSessionKeyForUser = rsaEncryptBase64(user.publicKeys.exchangePublicKeyPem, JSON.stringify({
-          sessionId,
-          sessionKey,
-        }));
-        const encryptedSessionKeyForServer = rsaEncryptBase64(server.publicKeys.exchangePublicKeyPem, JSON.stringify({
-          sessionId,
-          sessionKey,
-        }));
-
+        const ticketPayload = JSON.stringify(ticket);
         return {
           ok: true as const,
-          sessionId,
-          encryptedSessionKeyForUser,
-          encryptedSessionKeyForServer,
+          sessionId: ticket.sessionId,
+          encryptedSessionKeyForUser: rsaEncryptBase64(user.publicKeys.exchangePublicKeyPem, ticketPayload),
+          encryptedSessionKeyForServer: rsaEncryptBase64(server.publicKeys.exchangePublicKeyPem, ticketPayload),
           expiresAt,
         };
       } catch (error) {
