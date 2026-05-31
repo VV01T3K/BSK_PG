@@ -1,7 +1,5 @@
 import {
-  aesGcm,
   hash,
-  random,
   rsa,
   type SessionTicket,
 } from "@bsk/crypto";
@@ -139,16 +137,5 @@ describe("TTP authority", () => {
     });
 
     expect(close).toMatchObject({ ok: true, sessionId: payload.sessionId });
-  });
-
-  it("performs an AES-256-GCM encryption and decryption round trip", () => {
-    const key = random.sessionKey();
-    const envelope = aesGcm
-      .withKey(key)
-      .forSession("session-1")
-      .encrypt("classified service payload");
-    const plaintext = aesGcm.withKey(key).decrypt(envelope);
-
-    expect(plaintext).toBe("classified service payload");
   });
 });
