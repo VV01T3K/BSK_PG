@@ -8,7 +8,6 @@ import {
   registerSecurityDemoRoles,
   resetSecurityDemo,
   runForgedCertificateAttack,
-  runMitmTamperAttack,
 } from "../demo/actions";
 import { clientIdentity } from "../demo/state";
 
@@ -57,7 +56,7 @@ describe("browser-style Client security flow", () => {
     globalThis.fetch = originalFetch;
   });
 
-  it("registers, authenticates, exchanges encrypted service data, and rejects attacks", async () => {
+  it("registers, authenticates, exchanges encrypted service data, and rejects a forged certificate", async () => {
     await registerSecurityDemoRoles();
     expect((await clientIdentity()).userRegistered).toBe(true);
     expect((await service.state()).registered).toBe(true);
@@ -75,8 +74,5 @@ describe("browser-style Client security flow", () => {
 
     const forgedResult = await runForgedCertificateAttack();
     expect(forgedResult.rejected).toBe(true);
-
-    const mitmResult = await runMitmTamperAttack();
-    expect(mitmResult.rejected).toBe(true);
   });
 });

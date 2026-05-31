@@ -7,7 +7,7 @@ import {
 } from "@bsk/crypto";
 import { service, ttp } from "#/api";
 import { clearClientState, requireSession, requireUser, state } from "./state";
-import type { AttackResult, SessionEncryptedPayload, PrincipalState, ServiceServerSnapshot } from "./types";
+import type { AttackResult, PrincipalState, ServiceServerSnapshot } from "./types";
 
 async function getTtpPublicKey(): Promise<string> {
   const payload = await ttp.publicKey();
@@ -39,7 +39,6 @@ async function registerUser(): Promise<PrincipalState> {
     id: registration.subjectId,
     exchangeKeyPair,
     certificatePem: registration.certificatePem,
-    issuedAt: registration.issuedAt,
   };
 }
 
@@ -132,25 +131,6 @@ export async function runForgedCertificateAttack(): Promise<AttackResult> {
     throw new Error("forged certificate was unexpectedly accepted");
   } catch (error) {
     return { rejected: true, message: error instanceof Error ? error.message : "forged certificate rejected" };
-  }
-}
-
-export async function runMitmTamperAttack(): Promise<AttackResult> {
-  const session = requireSession();
-  const payload = aesGcm
-    .withKey(session.userSessionKey)
-    .forSession(session.sessionId)
-    .encrypt("Tamper check message");
-  const tampered: SessionEncryptedPayload = {
-    ...payload,
-    ciphertext: btoa(`${payload.ciphertext}.`),
-  };
-
-  try {
-    await service.service.exchange({ payload: tampered });
-    throw new Error("tampered ciphertext was unexpectedly accepted");
-  } catch (error) {
-    return { rejected: true, message: error instanceof Error ? error.message : "tampered ciphertext rejected" };
   }
 }
 

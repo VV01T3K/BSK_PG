@@ -1,6 +1,6 @@
 import type { RsaPair } from "@bsk/crypto";
 
-export type { SessionEncryptedPayload, ServiceServerSnapshot } from "server";
+export type { ServiceServerSnapshot } from "server";
 
 export type RsaKeyPair = RsaPair;
 
@@ -8,7 +8,6 @@ export interface PrincipalState {
   id: string;
   exchangeKeyPair: RsaKeyPair;
   certificatePem: string;
-  issuedAt: string;
 }
 
 export interface ClientSessionState {
