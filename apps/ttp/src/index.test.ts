@@ -8,17 +8,19 @@ import {
   publicEncrypt,
   randomBytes,
 } from "node:crypto";
+import { createRouterClient } from "@orpc/server";
 import { beforeEach, describe, expect, it } from "vitest";
-import { app, resetTtpStateForTests, type RegisterResponse, type UserAuthResponse } from "./index.js";
+import { resetTtpStateForTests, ttpRouter } from "./index.js";
 
 type Role = "user" | "server";
 
 interface PrincipalFixture {
   id: string;
   certificatePem: string;
-  authPrivateKeyPem: string;
   exchangePrivateKeyPem: string;
 }
+
+const ttp = createRouterClient(ttpRouter);
 
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -39,8 +41,7 @@ function generateRsaPair() {
 }
 
 async function ttpPublicKey(): Promise<string> {
-  const response = await app.request("/api/ttp/public-key");
-  const payload = await response.json();
+  const payload = await ttp.publicKey();
   return payload.publicKeyPem;
 }
 
@@ -89,26 +90,18 @@ async function registerPrincipal(role: Role): Promise<PrincipalFixture> {
   const id = sha256(`${role}-test-id`);
   const auth = generateRsaPair();
   const exchange = generateRsaPair();
-  const response = await app.request("/api/register", {
-    method: "POST",
-    body: JSON.stringify({
-      role,
-      encryptedId: encryptForTtp(publicKeyPem, id),
-      publicKeys: {
-        authPublicKeyPem: auth.publicKey,
-        exchangePublicKeyPem: exchange.publicKey,
-      },
-    }),
-    headers: { "Content-Type": "application/json" },
+  const payload = await ttp.register({
+    role,
+    encryptedId: encryptForTtp(publicKeyPem, id),
+    publicKeys: {
+      authPublicKeyPem: auth.publicKey,
+      exchangePublicKeyPem: exchange.publicKey,
+    },
   });
-
-  expect(response.status).toBe(200);
-  const payload = (await response.json()) as RegisterResponse;
 
   return {
     id: payload.subjectId,
     certificatePem: payload.certificatePem,
-    authPrivateKeyPem: auth.privateKey,
     exchangePrivateKeyPem: exchange.privateKey,
   };
 }
@@ -123,37 +116,28 @@ describe("TTP authority", () => {
     const server = await registerPrincipal("server");
     const requestId = "request-1";
 
-    const serverAuth = await app.request("/api/auth/server", {
-      method: "POST",
-      body: JSON.stringify({
-        serverId: server.id,
-        certificatePem: server.certificatePem,
-        requestId,
-      }),
-      headers: { "Content-Type": "application/json" },
+    const serverAuth = await ttp.auth.server({
+      serverId: server.id,
+      certificatePem: server.certificatePem,
+      requestId,
     });
-    expect(serverAuth.status).toBe(200);
+    expect(serverAuth.ok).toBe(true);
 
     const publicKeyPem = await ttpPublicKey();
-    const userAuth = await app.request("/api/auth/user", {
-      method: "POST",
-      body: JSON.stringify({
-        encryptedAuthMaterial: encryptLargePayloadForTtp(
-          publicKeyPem,
-          JSON.stringify({
-            userId: user.id,
-            userCertificatePem: user.certificatePem,
-            serverId: server.id,
-            serverCertificatePem: server.certificatePem,
-            requestId,
-          }),
-        ),
-      }),
-      headers: { "Content-Type": "application/json" },
+    const payload = await ttp.auth.user({
+      encryptedAuthMaterial: encryptLargePayloadForTtp(
+        publicKeyPem,
+        JSON.stringify({
+          userId: user.id,
+          userCertificatePem: user.certificatePem,
+          serverId: server.id,
+          serverCertificatePem: server.certificatePem,
+          requestId,
+        }),
+      ),
     });
 
-    expect(userAuth.status).toBe(200);
-    const payload = (await userAuth.json()) as UserAuthResponse;
+    expect(payload.ok).toBe(true);
     const userSession = decryptSession(user.exchangePrivateKeyPem, payload.encryptedSessionKeyForUser);
     const serverSession = decryptSession(server.exchangePrivateKeyPem, payload.encryptedSessionKeyForServer);
 
@@ -168,9 +152,8 @@ describe("TTP authority", () => {
     const server = await registerPrincipal("server");
     const publicKeyPem = await ttpPublicKey();
 
-    const response = await app.request("/api/auth/user", {
-      method: "POST",
-      body: JSON.stringify({
+    await expect(
+      ttp.auth.user({
         encryptedAuthMaterial: encryptLargePayloadForTtp(
           publicKeyPem,
           JSON.stringify({
@@ -182,43 +165,30 @@ describe("TTP authority", () => {
           }),
         ),
       }),
-      headers: { "Content-Type": "application/json" },
-    });
-
-    expect(response.status).toBe(401);
-    expect(await response.json()).toMatchObject({ ok: false });
+    ).rejects.toThrow();
   });
 
   it("closes sessions after successful authentication", async () => {
     const user = await registerPrincipal("user");
     const server = await registerPrincipal("server");
     const publicKeyPem = await ttpPublicKey();
-    const userAuth = await app.request("/api/auth/user", {
-      method: "POST",
-      body: JSON.stringify({
-        encryptedAuthMaterial: encryptLargePayloadForTtp(
-          publicKeyPem,
-          JSON.stringify({
-            userId: user.id,
-            userCertificatePem: user.certificatePem,
-            serverId: server.id,
-            serverCertificatePem: server.certificatePem,
-            requestId: "close-session",
-          }),
-        ),
-      }),
-      headers: { "Content-Type": "application/json" },
+    const payload = await ttp.auth.user({
+      encryptedAuthMaterial: encryptLargePayloadForTtp(
+        publicKeyPem,
+        JSON.stringify({
+          userId: user.id,
+          userCertificatePem: user.certificatePem,
+          serverId: server.id,
+          serverCertificatePem: server.certificatePem,
+          requestId: "close-session",
+        }),
+      ),
     });
-    const payload = (await userAuth.json()) as UserAuthResponse;
-
-    const close = await app.request("/api/session/close", {
-      method: "POST",
-      body: JSON.stringify({ sessionId: payload.sessionId }),
-      headers: { "Content-Type": "application/json" },
+    const close = await ttp.session.close({
+      sessionId: payload.sessionId,
     });
 
-    expect(close.status).toBe(200);
-    expect(await close.json()).toMatchObject({ ok: true, sessionId: payload.sessionId });
+    expect(close).toMatchObject({ ok: true, sessionId: payload.sessionId });
   });
 
   it("performs an AES-256-GCM encryption and decryption round trip", () => {

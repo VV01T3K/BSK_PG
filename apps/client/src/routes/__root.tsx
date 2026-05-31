@@ -7,9 +7,8 @@ import {
 } from "@tanstack/react-router";
 
 import appCss from "#/styles.css?url";
-import TanstackQueryProvider from "#/integrations/tanstack/query/root-provider";
 
-import type { QueryClient } from "@tanstack/react-query";
+import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 
 interface MyRouterContext {
   queryClient: QueryClient;
@@ -37,9 +36,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body className="font-sans antialiased">
-        <TanstackQueryProvider queryClient={router.options.context.queryClient}>
-          {children}
-        </TanstackQueryProvider>
+        <QueryClientProvider client={router.options.context.queryClient}>
+          <div className="min-h-screen">
+            <header className="border-b px-6 py-3 text-sm font-medium text-muted-foreground">
+              BSK PG Security Demo
+            </header>
+            {children}
+          </div>
+        </QueryClientProvider>
         <Scripts />
       </body>
     </html>

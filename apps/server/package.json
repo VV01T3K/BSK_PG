@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "hono": "^4.12.12",
+    "@bsk/rpc": "workspace:*",
+    "@orpc/server": "^1.14.4",
     "ttp": "workspace:*"
   },
   "devDependencies": {

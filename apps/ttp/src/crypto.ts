@@ -1,8 +1,14 @@
 import { createDecipheriv, randomBytes } from "node:crypto";
 import forge from "node-forge";
-import type { HybridEncryptedEnvelope } from "./types.js";
 
 export const RSA_BITS = 4096;
+
+type HybridEncryptedEnvelope = {
+  encryptedKey: string;
+  iv: string;
+  ciphertext: string;
+  authTag: string;
+};
 
 function randomHex(bytes: number): string {
   return randomBytes(bytes).toString("hex");

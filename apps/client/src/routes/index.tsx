@@ -27,28 +27,27 @@ import {
   runMitmTamperAttack,
 } from "#/demo/actions";
 import type { SecurityDemoSnapshot } from "#/demo/types";
-import { getTtpHealth } from "#/api/ttp-client";
+import { serviceQuery, ttpQuery } from "#/api";
 
-export const Route = createFileRoute("/_guard/")({
+export const Route = createFileRoute("/")({
   component: SecurityDemoDashboard,
 });
 
 function SecurityDemoDashboard() {
   const queryClient = useQueryClient();
   const stateQuery = useQuery({
-    queryKey: ["security-demo-state"],
+    queryKey: serviceQuery.state.queryKey(),
     queryFn: () => getSecurityDemoState(),
   });
   const healthQuery = useQuery({
-    queryKey: ["ttp-health"],
-    queryFn: getTtpHealth,
+    ...ttpQuery.health.queryOptions(),
     refetchInterval: 5_000,
   });
 
   const invalidate = async () => {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["security-demo-state"] }),
-      queryClient.invalidateQueries({ queryKey: ["ttp-health"] }),
+      queryClient.invalidateQueries({ queryKey: serviceQuery.state.key() }),
+      queryClient.invalidateQueries({ queryKey: ttpQuery.health.key() }),
     ]);
   };
 

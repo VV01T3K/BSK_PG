@@ -1,25 +1,15 @@
-export { app } from "./routes.js";
+import { createRpcFetch } from "@bsk/rpc/server";
+
+import { ttpRouter } from "./rpc.js";
+
+export { ttpRouter } from "./rpc.js";
 export { resetTtpStateForTests } from "./state.js";
-export type {
-  EventLogEntry,
-  HybridEncryptedEnvelope,
-  PublicKeySet,
-  RegisterRequest,
-  RegisterResponse,
-  Role,
-  ServerAuthRequest,
-  ServerAuthResponse,
-  SessionCloseRequest,
-  UserAuthMaterial,
-  UserAuthRequest,
-  UserAuthResponse,
-} from "./types.js";
+export type { EventLogEntry } from "./types.js";
+export type { TtpRouter } from "./rpc.js";
 
-import { app } from "./routes.js";
-
-export type TtpApp = typeof app;
+export const fetch = createRpcFetch(ttpRouter, "BSK PG Trusted Third Party");
 
 export default {
   port: 3001,
-  fetch: app.fetch,
+  fetch,
 };

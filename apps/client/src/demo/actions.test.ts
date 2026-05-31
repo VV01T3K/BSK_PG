@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { app as serviceApp, resetServiceServerStateForTests } from "server";
-import { app as ttpApp, resetTtpStateForTests } from "ttp";
+import { fetch as serviceFetch, resetServiceServerStateForTests } from "server";
+import { fetch as ttpFetch, resetTtpStateForTests } from "ttp";
 import {
   authenticateSecurityDemoSession,
   exchangeEncryptedServiceMessage,
@@ -29,8 +29,9 @@ function requestInit(input: RequestInfo | URL, init?: RequestInit): RequestInit 
     method: input.method,
     headers: input.headers,
     body: input.body,
+    duplex: "half",
     ...init,
-  };
+  } as RequestInit;
 }
 
 describe("browser-style Client security flow", () => {
@@ -40,10 +41,10 @@ describe("browser-style Client security flow", () => {
     globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
       const url = input instanceof Request ? new URL(input.url) : new URL(input.toString());
       if (url.host === "localhost:3001") {
-        return ttpApp.request(requestPath(input), requestInit(input, init));
+        return ttpFetch(new Request(`http://localhost:3001${requestPath(input)}`, requestInit(input, init)));
       }
       if (url.host === "localhost:3002") {
-        return serviceApp.request(requestPath(input), requestInit(input, init));
+        return serviceFetch(new Request(`http://localhost:3002${requestPath(input)}`, requestInit(input, init)));
       }
       return originalFetch(input, init);
     }) as typeof fetch;

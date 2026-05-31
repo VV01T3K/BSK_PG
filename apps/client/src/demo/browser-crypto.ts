@@ -1,5 +1,11 @@
-import type { HybridEncryptedEnvelope } from "ttp";
 import type { EncryptedEnvelope, RsaKeyPair } from "./types";
+
+type HybridEncryptedEnvelope = {
+  encryptedKey: string;
+  iv: string;
+  ciphertext: string;
+  authTag: string;
+};
 
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();

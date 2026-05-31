@@ -1,5 +1,4 @@
-import type { RegisterResponse, UserAuthMaterial, UserAuthResponse } from "ttp";
-import { parseRpcResponse, serviceClient, ttpClient } from "#/api/ttp-client";
+import { service, ttp } from "#/api";
 import {
   decryptAesGcm,
   decryptRsaOaepBase64,
@@ -15,33 +14,26 @@ import { clearClientState, log, requireServer, requireSession, requireUser, snap
 import type { EncryptedEnvelope, PrincipalState, SecurityDemoSnapshot, ServiceServerSnapshot } from "./types";
 
 async function getTtpPublicKey(): Promise<string> {
-  const response = await ttpClient.api.ttp["public-key"].$get();
-  const payload = await parseRpcResponse<{ publicKeyPem: string }>(response);
+  const payload = await ttp.publicKey();
   return payload.publicKeyPem;
 }
 
 async function registerUser(): Promise<PrincipalState> {
-  const rawIdSeed = randomIdSeed("user");
-  const id = await sha256Hex(rawIdSeed);
+  const id = await sha256Hex(randomIdSeed("user"));
   const ttpPublicKeyPem = await getTtpPublicKey();
   const authKeyPair = await generateRsaKeyPair();
   const exchangeKeyPair = await generateRsaKeyPair();
-  const response = await ttpClient.api.register.$post({
-    json: {
-      role: "user",
-      encryptedId: await encryptRsaOaepBase64(ttpPublicKeyPem, id),
-      publicKeys: {
-        authPublicKeyPem: authKeyPair.publicKeyPem,
-        exchangePublicKeyPem: exchangeKeyPair.publicKeyPem,
-      },
+  const registration = await ttp.register({
+    role: "user",
+    encryptedId: await encryptRsaOaepBase64(ttpPublicKeyPem, id),
+    publicKeys: {
+      authPublicKeyPem: authKeyPair.publicKeyPem,
+      exchangePublicKeyPem: exchangeKeyPair.publicKeyPem,
     },
   });
-  const registration = await parseRpcResponse<RegisterResponse>(response);
   log("user", "registered with TTP", `certificate ${await fingerprint(registration.certificatePem)}`);
   return {
     id: registration.subjectId,
-    rawIdSeed,
-    authKeyPair,
     exchangeKeyPair,
     certificatePem: registration.certificatePem,
     issuedAt: registration.issuedAt,
@@ -49,8 +41,7 @@ async function registerUser(): Promise<PrincipalState> {
 }
 
 async function refreshServerState(): Promise<ServiceServerSnapshot> {
-  const response = await serviceClient.api.server.state.$get();
-  state.server = await parseRpcResponse<ServiceServerSnapshot>(response);
+  state.server = await service.state();
   return state.server;
 }
 
@@ -68,7 +59,7 @@ export async function getSecurityDemoState(): Promise<SecurityDemoSnapshot> {
 
 export async function resetSecurityDemo(): Promise<SecurityDemoSnapshot> {
   clearClientState();
-  await parseRpcResponse<ServiceServerSnapshot>(await serviceClient.api.reset.$post());
+  await service.reset();
   log("user", "demo reset", "cleared browser Client state and protected Server state");
   await refreshServerState();
   return snapshot();
@@ -76,7 +67,7 @@ export async function resetSecurityDemo(): Promise<SecurityDemoSnapshot> {
 
 export async function registerSecurityDemoRoles(): Promise<SecurityDemoSnapshot> {
   state.user = await registerUser();
-  state.server = await parseRpcResponse<ServiceServerSnapshot>(await serviceClient.api.server.register.$post());
+  state.server = await service.server.register();
   state.session = undefined;
   state.forgedCertificateRejected = false;
   state.forgedCertificateMessage = undefined;
@@ -91,43 +82,31 @@ export async function authenticateSecurityDemoSession(): Promise<SecurityDemoSna
   const server = requireServer();
   const requestId = crypto.randomUUID();
 
-  await parseRpcResponse(
-    await serviceClient.api.server.authenticate.$post({
-      json: { requestId },
-    }),
-  );
+  await service.server.authenticate({ requestId });
   log("server", "server authenticated", `request ${requestId}`);
 
   const ttpPublicKeyPem = await getTtpPublicKey();
-  const authMaterial: UserAuthMaterial = {
+  const authMaterial = {
     userId: user.id,
     userCertificatePem: user.certificatePem,
     serverId: server.serverId,
     serverCertificatePem: server.certificatePem,
     requestId,
   };
-  const userAuth = await parseRpcResponse<UserAuthResponse>(
-    await ttpClient.api.auth.user.$post({
-      json: {
-        encryptedAuthMaterial: await encryptLargePayloadForTtp(ttpPublicKeyPem, JSON.stringify(authMaterial)),
-      },
-    }),
-  );
+  const userAuth = await ttp.auth.user({
+    encryptedAuthMaterial: await encryptLargePayloadForTtp(ttpPublicKeyPem, JSON.stringify(authMaterial)),
+  });
 
   const userSession = await decryptSessionKey(user, userAuth.encryptedSessionKeyForUser);
   if (userSession.sessionId !== userAuth.sessionId) {
     throw new Error("TTP returned inconsistent session identifiers");
   }
 
-  await parseRpcResponse<ServiceServerSnapshot>(
-    await serviceClient.api.server["accept-session"].$post({
-      json: {
-        sessionId: userAuth.sessionId,
-        encryptedSessionKeyForServer: userAuth.encryptedSessionKeyForServer,
-        expiresAt: userAuth.expiresAt,
-      },
-    }),
-  );
+  await service.server.acceptSession({
+    sessionId: userAuth.sessionId,
+    encryptedSessionKeyForServer: userAuth.encryptedSessionKeyForServer,
+    expiresAt: userAuth.expiresAt,
+  });
 
   state.session = {
     sessionId: userAuth.sessionId,
@@ -144,15 +123,9 @@ export async function exchangeEncryptedServiceMessage(): Promise<SecurityDemoSna
   const user = requireUser();
   const requestPlaintext = `User ${user.id.slice(0, 12)} requests the protected grade-summary service.`;
   const encryptedRequest = await encryptAesGcm(session.sessionId, session.userSessionKey, requestPlaintext);
-  const serviceResponse = await parseRpcResponse<{
-    plaintextReceived: string;
-    plaintextResponse: string;
-    envelope: EncryptedEnvelope;
-  }>(
-    await serviceClient.api.service.exchange.$post({
-      json: { envelope: encryptedRequest },
-    }),
-  );
+  const serviceResponse = await service.service.exchange({
+    envelope: encryptedRequest,
+  });
   const userPlaintext = await decryptAesGcm(session.userSessionKey, serviceResponse.envelope);
 
   state.lastPlainRequest = requestPlaintext;
@@ -171,22 +144,18 @@ export async function runForgedCertificateAttack(): Promise<SecurityDemoSnapshot
   const ttpPublicKeyPem = await getTtpPublicKey();
 
   try {
-    await parseRpcResponse<UserAuthResponse>(
-      await ttpClient.api.auth.user.$post({
-        json: {
-          encryptedAuthMaterial: await encryptLargePayloadForTtp(
-            ttpPublicKeyPem,
-            JSON.stringify({
-              userId: user.id,
-              userCertificatePem: server.certificatePem,
-              serverId: server.serverId,
-              serverCertificatePem: server.certificatePem,
-              requestId: crypto.randomUUID(),
-            } satisfies UserAuthMaterial),
-          ),
-        },
-      }),
-    );
+    await ttp.auth.user({
+      encryptedAuthMaterial: await encryptLargePayloadForTtp(
+        ttpPublicKeyPem,
+        JSON.stringify({
+          userId: user.id,
+          userCertificatePem: server.certificatePem,
+          serverId: server.serverId,
+          serverCertificatePem: server.certificatePem,
+          requestId: crypto.randomUUID(),
+        }),
+      ),
+    });
     throw new Error("forged certificate was unexpectedly accepted");
   } catch (error) {
     const message = error instanceof Error ? error.message : "forged certificate rejected";
@@ -206,11 +175,7 @@ export async function runMitmTamperAttack(): Promise<SecurityDemoSnapshot> {
   };
 
   try {
-    await parseRpcResponse(
-      await serviceClient.api.service.exchange.$post({
-        json: { envelope: tampered },
-      }),
-    );
+    await service.service.exchange({ envelope: tampered });
     throw new Error("tampered ciphertext was unexpectedly accepted");
   } catch (error) {
     const message = error instanceof Error ? error.message : "tampered ciphertext rejected";
@@ -224,12 +189,8 @@ export async function runMitmTamperAttack(): Promise<SecurityDemoSnapshot> {
 
 export async function closeSecurityDemoSession(): Promise<SecurityDemoSnapshot> {
   const session = requireSession();
-  await parseRpcResponse(
-    await ttpClient.api.session.close.$post({
-      json: { sessionId: session.sessionId },
-    }),
-  );
-  await parseRpcResponse(await serviceClient.api.server.session.close.$post());
+  await ttp.session.close({ sessionId: session.sessionId });
+  await service.server.closeSession();
   state.session = undefined;
   await refreshServerState();
   log("ttp", "session closed", session.sessionId);

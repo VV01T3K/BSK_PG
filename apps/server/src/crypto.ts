@@ -8,7 +8,12 @@ import {
   publicEncrypt,
   randomBytes,
 } from "node:crypto";
-import type { EncryptedEnvelope, RsaPair } from "./types.js";
+import type { EncryptedEnvelope } from "./types.js";
+
+export type RsaPair = {
+  publicKeyPem: string;
+  privateKeyPem: string;
+};
 
 export function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");

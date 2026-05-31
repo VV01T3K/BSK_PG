@@ -9,75 +9,50 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as GuardRouteRouteImport } from './routes/_guard/route'
-import { Route as GuardIndexRouteImport } from './routes/_guard/index'
+import { Route as IndexRouteImport } from './routes/index'
 
-const GuardRouteRoute = GuardRouteRouteImport.update({
-  id: '/_guard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GuardIndexRoute = GuardIndexRouteImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => GuardRouteRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof GuardIndexRoute
+  '/': typeof IndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof GuardIndexRoute
+  '/': typeof IndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/_guard': typeof GuardRouteRouteWithChildren
-  '/_guard/': typeof GuardIndexRoute
+  '/': typeof IndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths: '/'
   fileRoutesByTo: FileRoutesByTo
   to: '/'
-  id: '__root__' | '/_guard' | '/_guard/'
+  id: '__root__' | '/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  GuardRouteRoute: typeof GuardRouteRouteWithChildren
+  IndexRoute: typeof IndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/_guard': {
-      id: '/_guard'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof GuardRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_guard/': {
-      id: '/_guard/'
+    '/': {
+      id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof GuardIndexRouteImport
-      parentRoute: typeof GuardRouteRoute
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
 
-interface GuardRouteRouteChildren {
-  GuardIndexRoute: typeof GuardIndexRoute
-}
-
-const GuardRouteRouteChildren: GuardRouteRouteChildren = {
-  GuardIndexRoute: GuardIndexRoute,
-}
-
-const GuardRouteRouteWithChildren = GuardRouteRoute._addFileChildren(
-  GuardRouteRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
-  GuardRouteRoute: GuardRouteRouteWithChildren,
+  IndexRoute: IndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,6 +1,20 @@
 import type { EventLogEntry } from "ttp";
-import { fingerprint } from "./crypto.js";
-import type { ServiceServerSnapshot, ServiceServerState } from "./types.js";
+import { fingerprint, type RsaPair } from "./crypto.js";
+import type { EncryptedEnvelope, ServiceServerSnapshot } from "./types.js";
+
+type ServiceServerState = {
+  serverId?: string;
+  exchangeKeyPair?: RsaPair;
+  certificatePem?: string;
+  issuedAt?: string;
+  sessionId?: string;
+  sessionKey?: string;
+  sessionExpiresAt?: string;
+  lastPlainRequest?: string;
+  lastPlainResponse?: string;
+  lastEncryptedRequest?: EncryptedEnvelope;
+  lastEncryptedResponse?: EncryptedEnvelope;
+};
 
 export const state: ServiceServerState = {};
 export const logs: EventLogEntry[] = [];
