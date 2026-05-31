@@ -33,6 +33,10 @@ describe("random", () => {
     expect(random.hex(16)).not.toBe(random.hex(16));
   });
 
+  it("uuid() returns an RFC 4122 version 4 identifier", () => {
+    expect(random.uuid()).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  });
+
   it("sessionKey() decodes to a 256-bit (32 byte) key", () => {
     expect(Buffer.from(random.sessionKey(), "base64")).toHaveLength(32);
   });

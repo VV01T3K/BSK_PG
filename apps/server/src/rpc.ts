@@ -1,17 +1,14 @@
-import { randomUUID } from "node:crypto";
-import {
-  aesGcm,
-  hash,
-  rsa,
-  type SessionTicket,
-} from "@bsk/crypto";
-import { createRpcClient } from "@bsk/rpc/client";
 import { ORPCError, os, type } from "@orpc/server";
-import { log, readLogs, requireRegisteredServer, requireSessionKey, resetServiceServerStateForTests, snapshot, state } from "./state";
-import type { SessionEncryptedPayload, ServiceServerSnapshot } from "./types";
-import type { TtpRouter } from "ttp";
-
-const ttp = createRpcClient<TtpRouter>(process.env.TTP_API_BASE_URL ?? "http://localhost:3001");
+import { log, readLogs, readServiceServerStatus, requireRegisteredServer, resetServiceServerStateForTests, state } from "./state";
+import {
+  acceptSessionTicket,
+  authenticateProtectedServer,
+  closeLocalSession,
+  exchangeProtectedServiceData,
+  registerProtectedServer,
+  type AcceptSessionInput,
+} from "./protocol";
+import type { SessionEncryptedPayload, ServiceServerStatus } from "./types";
 
 function reject(code: "BAD_REQUEST" | "UNAUTHORIZED", error: unknown): never {
   const message = error instanceof Error ? error.message : "Unknown service server error";
@@ -27,42 +24,22 @@ export const serviceRouter = {
     sessionEstablished: Boolean(state.sessionId),
   })),
 
-  state: os.handler(() => snapshot()),
+  state: os.handler(() => readServiceServerStatus()),
 
   logs: os.handler(() => ({ logs: readLogs() })),
 
   reset: os.handler(() => {
     resetServiceServerStateForTests();
     log("server reset", "cleared protected service server state");
-    return snapshot();
+    return readServiceServerStatus();
   }),
 
   server: {
-    register: os.handler(async (): Promise<ServiceServerSnapshot> => {
+    register: os.handler(async (): Promise<ServiceServerStatus> => {
       try {
-        const ttpPublicKeyPem = (await ttp.publicKey()).publicKeyPem;
-        const serverId = hash.of(`server-${randomUUID()}`).sha256Hex();
-        const authKeyPair = rsa.generatePair();
-        const exchangeKeyPair = rsa.generatePair();
-        const registration = await ttp.register({
-          role: "server",
-          encryptedId: rsa.publicKey(ttpPublicKeyPem).encrypt(serverId),
-          publicKeys: {
-            authPublicKeyPem: authKeyPair.publicKeyPem,
-            exchangePublicKeyPem: exchangeKeyPair.publicKeyPem,
-          },
-        });
-
-        state.serverId = registration.subjectId;
-        state.exchangeKeyPair = exchangeKeyPair;
-        state.certificatePem = registration.certificatePem;
-        state.issuedAt = registration.issuedAt;
-        state.sessionId = undefined;
-        state.sessionKey = undefined;
-        state.sessionExpiresAt = undefined;
-
-        log("registered with TTP", `certificate ${snapshot().certificateFingerprint}`);
-        return snapshot();
+        const server = await registerProtectedServer();
+        log("registered with TTP", `server ${server.serverId}`);
+        return server;
       } catch (error) {
         reject("BAD_REQUEST", error);
       }
@@ -71,78 +48,39 @@ export const serviceRouter = {
     authenticate: os.input(type<{ requestId?: string } | undefined>()).handler(async ({ input }) => {
       try {
         requireRegisteredServer();
-        const requestId = input?.requestId ?? randomUUID();
-        const response = await ttp.auth.server({
-          serverId: state.serverId!,
-          certificatePem: state.certificatePem!,
-          requestId,
-        });
+        const response = await authenticateProtectedServer(input?.requestId);
         log("server certificate authenticated", `request ${response.requestId}`);
-        return { ...response, certificatePem: state.certificatePem };
+        return response;
       } catch (error) {
         reject("UNAUTHORIZED", error);
       }
     }),
 
     acceptSession: os
-      .input(
-        type<{
-          sessionId: string;
-          encryptedSessionKeyForServer: string;
-          expiresAt: string;
-        }>(),
-      )
+      .input(type<AcceptSessionInput>())
       .handler(({ input }) => {
         try {
-          requireRegisteredServer();
-          const ticket = JSON.parse(
-            rsa
-              .privateKey(state.exchangeKeyPair!.privateKeyPem)
-              .decrypt(input.encryptedSessionKeyForServer),
-          ) as SessionTicket;
-          if (ticket.sessionId !== input.sessionId) {
-            throw new Error("session key payload does not match session id");
-          }
-          state.sessionId = ticket.sessionId;
-          state.sessionKey = ticket.sessionKey;
-          state.sessionExpiresAt = input.expiresAt;
+          const server = acceptSessionTicket(input);
           log("session key accepted", `session ${input.sessionId}`);
-          return snapshot();
+          return server;
         } catch (error) {
           reject("BAD_REQUEST", error);
         }
       }),
 
     closeSession: os.handler(() => {
-      const closedSession = state.sessionId;
-      state.sessionId = undefined;
-      state.sessionKey = undefined;
-      state.sessionExpiresAt = undefined;
+      const { closedSession, serverStatus } = closeLocalSession();
       log("session closed locally", closedSession ?? "no active session");
-      return snapshot();
+      return serverStatus;
     }),
   },
 
   service: {
     exchange: os.input(type<{ payload: SessionEncryptedPayload }>()).handler(({ input }) => {
       try {
-        const sessionKey = requireSessionKey();
-        const sessionCipher = aesGcm.withKey(sessionKey).forSession(state.sessionId!);
-        const plaintext = sessionCipher.decrypt(input.payload);
-        const responsePlaintext = `Protected service accepted encrypted request: ${plaintext}`;
-        const encryptedResponse = sessionCipher.encrypt(responsePlaintext);
-
-        state.lastPlainRequest = plaintext;
-        state.lastPlainResponse = responsePlaintext;
-        state.lastEncryptedRequest = input.payload;
-        state.lastEncryptedResponse = encryptedResponse;
+        const response = exchangeProtectedServiceData(input.payload);
         log("encrypted service exchange", `session ${state.sessionId}`);
-
-        return {
-          plaintextReceived: plaintext,
-          plaintextResponse: responsePlaintext,
-          payload: encryptedResponse,
-        };
+        return response;
       } catch (error) {
         reject("BAD_REQUEST", error);
       }

@@ -6,6 +6,7 @@ import type {
   RsaDecryptor,
   RsaEncryptor,
   RsaPair,
+  UUID,
 } from "./types";
 
 export const RSA_BITS = 4096;
@@ -60,6 +61,10 @@ export const random = {
   hex(bytes: number): string {
     const value = forge.random.getBytesSync(bytes);
     return forge.util.bytesToHex(value);
+  },
+
+  uuid(): UUID {
+    return crypto.randomUUID();
   },
 
   sessionKey(): string {

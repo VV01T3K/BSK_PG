@@ -1,19 +1,14 @@
 import { createFileLogger, type EventLogEntry } from "@bsk/rpc/log";
-import { hash, type RsaPair } from "@bsk/crypto";
-import type { SessionEncryptedPayload, ServiceServerSnapshot } from "./types";
+import { type RsaPair } from "@bsk/crypto";
+import type { ServiceServerStatus } from "./types";
 
 type ServiceServerState = {
   serverId?: string;
   exchangeKeyPair?: RsaPair;
   certificatePem?: string;
-  issuedAt?: string;
   sessionId?: string;
   sessionKey?: string;
-  sessionExpiresAt?: string;
-  lastPlainRequest?: string;
-  lastPlainResponse?: string;
-  lastEncryptedRequest?: SessionEncryptedPayload;
-  lastEncryptedResponse?: SessionEncryptedPayload;
+  serviceExchanged?: boolean;
 };
 
 export const state: ServiceServerState = {};
@@ -33,20 +28,13 @@ export function resetServiceServerStateForTests() {
   logger.reset();
 }
 
-export function snapshot(): ServiceServerSnapshot {
+export function readServiceServerStatus(): ServiceServerStatus {
   return {
     registered: Boolean(state.serverId),
     serverId: state.serverId,
     certificatePem: state.certificatePem,
-    certificateFingerprint: state.certificatePem ? hash.of(state.certificatePem).fingerprint() : undefined,
-    issuedAt: state.issuedAt,
     sessionEstablished: Boolean(state.sessionId),
-    sessionId: state.sessionId,
-    sessionExpiresAt: state.sessionExpiresAt,
-    lastPlainRequest: state.lastPlainRequest,
-    lastPlainResponse: state.lastPlainResponse,
-    lastEncryptedRequest: state.lastEncryptedRequest,
-    lastEncryptedResponse: state.lastEncryptedResponse,
+    serviceExchanged: Boolean(state.serviceExchanged),
   };
 }
 

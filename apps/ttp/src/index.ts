@@ -5,6 +5,7 @@ import { ttpRouter } from "./rpc";
 export { ttpRouter } from "./rpc";
 export { resetTtpStateForTests } from "./state";
 export type { EventLogEntry } from "@bsk/rpc/log";
+export type { PrincipalPublicKeys, UserAuthenticationRequest } from "./protocol";
 export type { TtpRouter } from "./rpc";
 
 export const fetch = createRpcFetch(ttpRouter, "BSK PG Trusted Third Party");

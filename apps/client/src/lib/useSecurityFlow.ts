@@ -51,6 +51,6 @@ export function useSecurityFlow() {
     serverRegistered: Boolean(server?.registered),
     registrationComplete: Boolean(clientStatus?.userRegistered && server?.registered),
     sessionEstablished: Boolean(clientStatus?.sessionId && server?.sessionEstablished),
-    serviceExchanged: Boolean(server?.lastPlainResponse),
+    serviceExchanged: Boolean(server?.serviceExchanged),
   };
 }

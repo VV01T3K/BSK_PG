@@ -117,7 +117,7 @@ function createUserAuthenticationRequest(
     userCertificatePem,
     serverId: server.serverId,
     serverCertificatePem: server.certificatePem,
-    requestId: crypto.randomUUID(),
+    requestId: random.uuid(),
   };
 }
 
