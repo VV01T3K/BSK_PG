@@ -11,9 +11,12 @@ type ServiceServerState = {
   sessionId?: string;
   sessionKey?: string;
   serviceExchanged?: boolean;
+  pendingRequests: Map<string, { userId: string; createdAt: string }>;
 };
 
-export const state: ServiceServerState = {};
+export const state: ServiceServerState = {
+  pendingRequests: new Map(),
+};
 
 const logger = createSecurityLogger(["application.log", "server.log"]);
 
@@ -22,7 +25,9 @@ export function log(event: string, details: string, level: SecurityLogLevel = "i
 }
 
 export function resetServiceServerStateForTests() {
+  state.pendingRequests.clear();
   for (const key of Object.keys(state) as Array<keyof ServiceServerState>) {
+    if (key === "pendingRequests") continue;
     delete state[key];
   }
   logger.reset();

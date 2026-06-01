@@ -2,7 +2,7 @@ import { hash, random, rsa, signedPayload, type SessionTicket } from "@bsk/crypt
 
 import { issueCertificate, validateCertificate } from "./certificates";
 import { ca } from "./crypto";
-import { principalKey, principals, sessions } from "./state";
+import { pendingAuths, principalKey, principals, sessions } from "./state";
 import type { PrincipalRecord, Role, SessionRecord } from "./types";
 
 export type PrincipalPublicKeys = PrincipalRecord["publicKeys"];
@@ -17,6 +17,7 @@ export type ServerAuthenticationInput = {
   serverId: string;
   certificatePem: string;
   requestId: string;
+  userId: string;
   signature: string;
 };
 
@@ -31,6 +32,10 @@ export type UserAuthenticationRequest = {
 
 export type UserAuthenticationInput = {
   encryptedAuthMaterial: string;
+};
+
+export type ServerSessionKeyInput = {
+  requestId: string;
 };
 
 export function ttpPublicKeyResponse() {
@@ -71,17 +76,39 @@ export function authenticateServerCertificate(input: ServerAuthenticationInput) 
     certificatePem: input.certificatePem,
   });
   verifyPrincipalSignature(server, serverAuthenticationPayload(input), input.signature);
+  const validatedAt = new Date().toISOString();
+
+  pendingAuths.set(input.requestId, {
+    requestId: input.requestId,
+    serverId: input.serverId,
+    expectedUserId: input.userId,
+    validatedAt,
+  });
 
   return {
     ok: true,
     requestId: input.requestId,
     serverId: input.serverId,
-    validatedAt: new Date().toISOString(),
+    validatedAt,
   } as const;
 }
 
 export function authenticateUserForServer(input: UserAuthenticationInput) {
   const request = decryptUserAuthenticationRequest(input.encryptedAuthMaterial);
+  const pendingAuth = pendingAuths.get(request.requestId);
+
+  if (!pendingAuth) {
+    throw new Error(`authentication request ${request.requestId} was not initiated by server`);
+  }
+
+  if (pendingAuth.expectedUserId !== request.userId) {
+    throw new Error("user authentication does not match the pending service request");
+  }
+
+  if (pendingAuth.serverId !== request.serverId) {
+    throw new Error("server authentication does not match the pending service request");
+  }
+
   const user = validateCertificate({
     role: "user",
     subjectId: request.userId,
@@ -93,24 +120,41 @@ export function authenticateUserForServer(input: UserAuthenticationInput) {
     certificatePem: request.serverCertificatePem,
   });
   verifyPrincipalSignature(user, userAuthenticationPayload(request), request.signature);
-  const session = createSession(user.subjectId, server.subjectId);
+  const session = createSession(request.requestId, user.subjectId, server.subjectId);
   const ticketPayload = JSON.stringify({
     sessionId: session.sessionId,
     sessionKey: session.sessionKey,
   } satisfies SessionTicket);
+  const encryptedSessionKeyForUser = rsa
+    .publicKey(user.publicKeys.exchangePublicKeyPem)
+    .encrypt(ticketPayload);
+  const encryptedSessionKeyForServer = rsa
+    .publicKey(server.publicKeys.exchangePublicKeyPem)
+    .encrypt(ticketPayload);
+
+  session.encryptedSessionKeyForServer = encryptedSessionKeyForServer;
+  pendingAuths.delete(request.requestId);
 
   return {
     request,
     response: {
       ok: true as const,
       sessionId: session.sessionId,
-      encryptedSessionKeyForUser: rsa
-        .publicKey(user.publicKeys.exchangePublicKeyPem)
-        .encrypt(ticketPayload),
-      encryptedSessionKeyForServer: rsa
-        .publicKey(server.publicKeys.exchangePublicKeyPem)
-        .encrypt(ticketPayload),
+      encryptedSessionKeyForUser,
     },
+  };
+}
+
+export function serverSessionKey(input: ServerSessionKeyInput) {
+  const session = [...sessions.values()].find((record) => record.requestId === input.requestId);
+
+  if (!session) {
+    throw new Error(`session for request ${input.requestId} not found`);
+  }
+
+  return {
+    sessionId: session.sessionId,
+    encryptedSessionKeyForServer: session.encryptedSessionKeyForServer,
   };
 }
 
@@ -133,12 +177,14 @@ function decryptUserAuthenticationRequest(
   ) as UserAuthenticationRequest;
 }
 
-function createSession(userId: string, serverId: string): SessionRecord {
+function createSession(requestId: string, userId: string, serverId: string): SessionRecord {
   const session: SessionRecord = {
     sessionId: random.hex(16),
+    requestId,
     userId,
     serverId,
     sessionKey: random.sessionKey(),
+    encryptedSessionKeyForServer: "",
     createdAt: new Date().toISOString(),
   };
 
@@ -158,12 +204,14 @@ function serverAuthenticationPayload(input: {
   serverId: string;
   certificatePem: string;
   requestId: string;
+  userId: string;
 }) {
   return signedPayload.from({
     certificateHash: hash.of(input.certificatePem).sha256Hex(),
     requestId: input.requestId,
     role: "server",
     serverId: input.serverId,
+    userId: input.userId,
   });
 }
 

@@ -10,12 +10,8 @@ import {
 } from "./state";
 import type { SessionEncryptedPayload } from "./types";
 
-const ttp = createRpcClient<TtpRouter>(process.env.TTP_API_BASE_URL ?? "http://localhost:3001");
-
-export type AcceptSessionInput = {
-  sessionId: string;
-  encryptedSessionKeyForServer: string;
-};
+const ttpBaseUrl = process.env.TTP_API_BASE_URL ?? "http://localhost:3001";
+const ttp = createRpcClient<TtpRouter>(ttpBaseUrl);
 
 export async function registerProtectedServer() {
   const ttpPublicKeyPem = (await ttp.publicKey()).publicKeyPem;
@@ -35,38 +31,64 @@ export async function registerProtectedServer() {
   state.authKeyPair = authKeyPair;
   state.exchangeKeyPair = exchangeKeyPair;
   state.certificatePem = registration.certificatePem;
+  state.pendingRequests.clear();
   clearLocalSession();
   state.serviceExchanged = undefined;
 
   return readServiceServerStatus();
 }
 
-export async function authenticateProtectedServer(requestId: string = random.uuid()) {
+export async function requestService(input: { userId: string }) {
   requireRegisteredServer();
   const serverId = state.serverId!;
   const certificatePem = state.certificatePem!;
-  const response = await ttp.auth.server({
+  const requestId = random.uuid();
+
+  state.pendingRequests.set(requestId, {
+    userId: input.userId,
+    createdAt: new Date().toISOString(),
+  });
+
+  await ttp.auth.server({
     serverId,
     certificatePem,
     requestId,
-    signature: rsa
-      .privateKey(state.authKeyPair!.privateKeyPem)
-      .sign(serverAuthenticationPayload({ serverId, certificatePem, requestId })),
+    userId: input.userId,
+    signature: rsa.privateKey(state.authKeyPair!.privateKeyPem).sign(
+      serverAuthenticationPayload({
+        serverId,
+        certificatePem,
+        requestId,
+        userId: input.userId,
+      }),
+    ),
   });
 
-  return { ...response, certificatePem };
+  return {
+    serverAuthenticated: true as const,
+    requestId,
+    ttpBaseUrl,
+  };
 }
 
-export function acceptSessionTicket(input: AcceptSessionInput) {
+export async function fetchServerSessionKey(input: { requestId: string }) {
   requireRegisteredServer();
-  const ticket = decryptSessionTicket(input.encryptedSessionKeyForServer);
+  const pendingRequest = state.pendingRequests.get(input.requestId);
 
-  if (ticket.sessionId !== input.sessionId) {
+  if (!pendingRequest) {
+    throw new Error(`service request ${input.requestId} not found`);
+  }
+
+  const response = await ttp.session.serverKey({ requestId: input.requestId });
+  const ticket = decryptSessionTicket(response.encryptedSessionKeyForServer);
+
+  if (ticket.sessionId !== response.sessionId) {
     throw new Error("session key payload does not match session id");
   }
 
   state.sessionId = ticket.sessionId;
   state.sessionKey = ticket.sessionKey;
+  state.pendingRequests.delete(input.requestId);
 
   return readServiceServerStatus();
 }
@@ -106,11 +128,13 @@ function serverAuthenticationPayload(input: {
   serverId: string;
   certificatePem: string;
   requestId: string;
+  userId: string;
 }) {
   return signedPayload.from({
     certificateHash: hash.of(input.certificatePem).sha256Hex(),
     requestId: input.requestId,
     role: "server",
     serverId: input.serverId,
+    userId: input.userId,
   });
 }
