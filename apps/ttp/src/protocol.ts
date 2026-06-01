@@ -2,7 +2,7 @@ import { hash, random, rsa, signedPayload, type SessionTicket } from "@bsk/crypt
 
 import { issueCertificate, validateCertificate } from "./certificates";
 import { ca } from "./crypto";
-import { pendingAuths, principalKey, principals, sessions } from "./state";
+import { pendingAuths, principalKey, principals, sessions, sessionsByRequest } from "./state";
 import type { PrincipalRecord, Role, SessionRecord } from "./types";
 
 export type PrincipalPublicKeys = PrincipalRecord["publicKeys"];
@@ -171,10 +171,15 @@ export function authenticateUserForServer(input: UserAuthenticationInput) {
 }
 
 export function serverSessionKey(input: ServerSessionKeyInput) {
-  const session = [...sessions.values()].find((record) => record.requestId === input.requestId);
+  const sessionId = sessionsByRequest.get(input.requestId);
+  const session = sessionId ? sessions.get(sessionId) : undefined;
 
   if (!session) {
     throw new Error(`session for request ${input.requestId} not found`);
+  }
+
+  if (session.closedAt) {
+    throw new Error(`session for request ${input.requestId} is closed`);
   }
 
   return {
@@ -214,6 +219,7 @@ function createSession(requestId: string, userId: string, serverId: string): Ses
   };
 
   sessions.set(session.sessionId, session);
+  sessionsByRequest.set(requestId, session.sessionId);
   return session;
 }
 

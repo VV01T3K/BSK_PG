@@ -172,6 +172,43 @@ describe("TTP authority", () => {
     ).rejects.toThrow();
   }, 10000);
 
+  it("issues a user authentication request (redirect) after the server is validated", async () => {
+    const user = await registerPrincipal("user");
+    const server = await registerPrincipal("server");
+    const requestId = "redirect-ok";
+
+    await authenticateServerForUser(server, user, requestId);
+    const redirect = await ttp.auth.redirect({ requestId });
+
+    expect(redirect).toEqual({
+      requestId,
+      serverId: server.id,
+      serverAuthenticated: true,
+      action: "submit-user-authentication",
+    });
+  }, 10000);
+
+  it("rejects a redirect for an unknown request", async () => {
+    await expect(ttp.auth.redirect({ requestId: "no-such-request" })).rejects.toThrow();
+  }, 10000);
+
+  it("rejects fetching the server session key for a closed session", async () => {
+    const user = await registerPrincipal("user");
+    const server = await registerPrincipal("server");
+    const publicKeyPem = await ttpPublicKey();
+    const requestId = "closed-session-key";
+
+    await authenticateServerForUser(server, user, requestId);
+    const payload = await ttp.auth.user({
+      encryptedAuthMaterial: rsa
+        .publicKey(publicKeyPem)
+        .encrypt(JSON.stringify(signedUserRequest(user, server, requestId))),
+    });
+    await ttp.session.close({ sessionId: payload.sessionId });
+
+    await expect(ttp.session.serverKey({ requestId })).rejects.toThrow();
+  }, 10000);
+
   it("closes sessions after successful authentication", async () => {
     const user = await registerPrincipal("user");
     const server = await registerPrincipal("server");

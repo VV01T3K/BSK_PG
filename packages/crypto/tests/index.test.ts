@@ -68,6 +68,15 @@ describe("aesGcm", () => {
     expect(() => wrongSession.decrypt(payload)).toThrow();
   });
 
+  it("fails authentication when the session id is relabeled (bound as AAD)", () => {
+    const key = random.sessionKey();
+    const payload = aesGcm.withKey(key).forSession("session-1").encrypt("classified");
+    // Relabel the payload to a different session and decrypt under that session: the JS
+    // session-id check now passes, so only the GCM tag (AAD) can catch the swap.
+    const relabeled = { ...payload, sessionId: "session-2" };
+    expect(() => aesGcm.withKey(key).forSession("session-2").decrypt(relabeled)).toThrow();
+  });
+
   it("fails authentication when the ciphertext is tampered with", () => {
     const cipher = aesGcm.withKey(random.sessionKey());
     const payload = cipher.encrypt("classified");

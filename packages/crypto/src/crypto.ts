@@ -90,10 +90,14 @@ export const signedPayload = {
 
 export const aesGcm = {
   withKey(sessionKey: string) {
-    const encrypt = (plaintext: string): AesGcmPayload => {
+    const encrypt = (plaintext: string, additionalData?: string): AesGcmPayload => {
       const iv = forge.random.getBytesSync(AES_GCM_IV_BYTES);
       const cipher = forge.cipher.createCipher("AES-GCM", forge.util.decode64(sessionKey));
-      cipher.start({ iv, tagLength: AES_GCM_TAG_BITS });
+      cipher.start({
+        iv,
+        additionalData: additionalData ? forge.util.encodeUtf8(additionalData) : undefined,
+        tagLength: AES_GCM_TAG_BITS,
+      });
       cipher.update(forge.util.createBuffer(forge.util.encodeUtf8(plaintext)));
       if (!cipher.finish()) throw new Error("AES-GCM encryption failed");
 
@@ -104,10 +108,11 @@ export const aesGcm = {
       };
     };
 
-    const decrypt = (payload: AesGcmPayload): string => {
+    const decrypt = (payload: AesGcmPayload, additionalData?: string): string => {
       const decipher = forge.cipher.createDecipher("AES-GCM", forge.util.decode64(sessionKey));
       decipher.start({
         iv: forge.util.decode64(payload.iv),
+        additionalData: additionalData ? forge.util.encodeUtf8(additionalData) : undefined,
         tag: forge.util.createBuffer(forge.util.decode64(payload.authTag)),
         tagLength: AES_GCM_TAG_BITS,
       });
@@ -120,16 +125,18 @@ export const aesGcm = {
       encrypt,
       decrypt,
       forSession(sessionId: string) {
+        // The session id is bound as AES-GCM associated data (AAD), so it is covered by the
+        // authentication tag: a payload re-used under a different session fails to decrypt.
         return {
           encrypt(plaintext: string): SessionEncryptedPayload {
-            return { sessionId, ...encrypt(plaintext) };
+            return { sessionId, ...encrypt(plaintext, sessionId) };
           },
 
           decrypt(payload: SessionEncryptedPayload): string {
             if (payload.sessionId !== sessionId) {
               throw new Error("encrypted payload session id does not match expected session");
             }
-            return decrypt(payload);
+            return decrypt(payload, sessionId);
           },
         };
       },

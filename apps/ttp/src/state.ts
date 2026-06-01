@@ -4,6 +4,7 @@ import type { PendingAuthRecord, PrincipalRecord, Role, SessionRecord } from "./
 
 export const principals = new Map<string, PrincipalRecord>();
 export const sessions = new Map<string, SessionRecord>();
+export const sessionsByRequest = new Map<string, string>();
 export const pendingAuths = new Map<string, PendingAuthRecord>();
 
 const logger = createSecurityLogger(["application.log", "ttp.log"]);
@@ -17,6 +18,7 @@ export function principalKey(role: Role, subjectId: string): string {
 export function resetTtpStateForTests() {
   principals.clear();
   sessions.clear();
+  sessionsByRequest.clear();
   pendingAuths.clear();
   logger.reset();
 }
