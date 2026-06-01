@@ -34,7 +34,9 @@ describe("random", () => {
   });
 
   it("uuid() returns an RFC 4122 version 4 identifier", () => {
-    expect(random.uuid()).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(random.uuid()).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
   });
 
   it("sessionKey() decodes to a 256-bit (32 byte) key", () => {
@@ -67,7 +69,9 @@ describe("aesGcm", () => {
   it("fails authentication when the ciphertext is tampered with", () => {
     const cipher = aesGcm.withKey(random.sessionKey());
     const payload = cipher.encrypt("classified");
-    expect(() => cipher.decrypt({ ...payload, ciphertext: tamperBase64(payload.ciphertext) })).toThrow();
+    expect(() =>
+      cipher.decrypt({ ...payload, ciphertext: tamperBase64(payload.ciphertext) }),
+    ).toThrow();
   });
 
   it("fails authentication when the auth tag is tampered with", () => {
@@ -116,6 +120,8 @@ describe("rsa", () => {
   it("verify() rejects signatures for changed payloads or keys", () => {
     const signature = rsa.privateKey(pair.privateKeyPem).sign("authentication claim");
     expect(rsa.publicKey(pair.publicKeyPem).verify("changed claim", signature)).toBe(false);
-    expect(rsa.publicKey(otherPair.publicKeyPem).verify("authentication claim", signature)).toBe(false);
+    expect(rsa.publicKey(otherPair.publicKeyPem).verify("authentication claim", signature)).toBe(
+      false,
+    );
   });
 });

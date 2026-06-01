@@ -1,6 +1,11 @@
 import forge from "node-forge";
 import { beforeAll, describe, expect, it } from "bun:test";
-import { type CertificateAuthority, createCertificateAuthority, issuePrincipalCertificate, rsa } from "../src/index";
+import {
+  type CertificateAuthority,
+  createCertificateAuthority,
+  issuePrincipalCertificate,
+  rsa,
+} from "../src/index";
 
 type ExtKeyUsage = { clientAuth?: boolean; serverAuth?: boolean };
 
@@ -43,10 +48,20 @@ describe("certificates", () => {
 
   it("reflects the principal role in extKeyUsage", () => {
     const userCert = forge.pki.certificateFromPem(
-      issuePrincipalCertificate({ authority: ca, role: "user", subjectId: "u", publicKeyPem: principalPublicKeyPem }),
+      issuePrincipalCertificate({
+        authority: ca,
+        role: "user",
+        subjectId: "u",
+        publicKeyPem: principalPublicKeyPem,
+      }),
     );
     const serverCert = forge.pki.certificateFromPem(
-      issuePrincipalCertificate({ authority: ca, role: "server", subjectId: "s", publicKeyPem: principalPublicKeyPem }),
+      issuePrincipalCertificate({
+        authority: ca,
+        role: "server",
+        subjectId: "s",
+        publicKeyPem: principalPublicKeyPem,
+      }),
     );
 
     const userExt = userCert.getExtension("extKeyUsage") as ExtKeyUsage;

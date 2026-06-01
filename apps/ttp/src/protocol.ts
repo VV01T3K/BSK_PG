@@ -124,7 +124,9 @@ export function closeSession(sessionId: string) {
   return { ok: true, sessionId, closedAt: session.closedAt };
 }
 
-function decryptUserAuthenticationRequest(encryptedAuthMaterial: string): UserAuthenticationRequest {
+function decryptUserAuthenticationRequest(
+  encryptedAuthMaterial: string,
+): UserAuthenticationRequest {
   return JSON.parse(
     rsa.privateKey(ca.privateKeyPem).decrypt(encryptedAuthMaterial),
   ) as UserAuthenticationRequest;
@@ -151,7 +153,11 @@ function verifyPrincipalSignature(principal: PrincipalRecord, payload: string, s
   }
 }
 
-function serverAuthenticationPayload(input: { serverId: string; certificatePem: string; requestId: string }) {
+function serverAuthenticationPayload(input: {
+  serverId: string;
+  certificatePem: string;
+  requestId: string;
+}) {
   return signedPayload.from({
     certificateHash: hash.of(input.certificatePem).sha256Hex(),
     requestId: input.requestId,

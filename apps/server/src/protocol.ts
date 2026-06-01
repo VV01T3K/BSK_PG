@@ -1,6 +1,11 @@
 import { aesGcm, hash, random, rsa, signedPayload, type SessionTicket } from "@bsk/crypto";
 import { createRpcClient } from "@bsk/rpc/client";
-import { readServiceServerStatus, requireRegisteredServer, requireSessionKey, state } from "./state";
+import {
+  readServiceServerStatus,
+  requireRegisteredServer,
+  requireSessionKey,
+  state,
+} from "./state";
 import type { SessionEncryptedPayload } from "./types";
 import type { TtpRouter } from "ttp";
 
@@ -43,9 +48,9 @@ export async function authenticateProtectedServer(requestId: string = random.uui
     serverId,
     certificatePem,
     requestId,
-    signature: rsa.privateKey(state.authKeyPair!.privateKeyPem).sign(
-      serverAuthenticationPayload({ serverId, certificatePem, requestId }),
-    ),
+    signature: rsa
+      .privateKey(state.authKeyPair!.privateKeyPem)
+      .sign(serverAuthenticationPayload({ serverId, certificatePem, requestId })),
   });
 
   return { ...response, certificatePem };
@@ -96,7 +101,11 @@ function clearLocalSession() {
   state.sessionKey = undefined;
 }
 
-function serverAuthenticationPayload(input: { serverId: string; certificatePem: string; requestId: string }) {
+function serverAuthenticationPayload(input: {
+  serverId: string;
+  certificatePem: string;
+  requestId: string;
+}) {
   return signedPayload.from({
     certificateHash: hash.of(input.certificatePem).sha256Hex(),
     requestId: input.requestId,

@@ -30,12 +30,18 @@ function Alert({
 }
 
 function AlertTitle({ className, ...props }: React.ComponentProps<"div">) {
-  return <div data-slot="alert-title" className={cn("font-medium leading-none", className)} {...props} />;
+  return (
+    <div data-slot="alert-title" className={cn("font-medium leading-none", className)} {...props} />
+  );
 }
 
 function AlertDescription({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <div data-slot="alert-description" className={cn("text-sm [&_p]:leading-relaxed", className)} {...props} />
+    <div
+      data-slot="alert-description"
+      className={cn("text-sm [&_p]:leading-relaxed", className)}
+      {...props}
+    />
   );
 }
 

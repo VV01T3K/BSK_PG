@@ -176,7 +176,10 @@ export const rsa = {
     return {
       decrypt(payloadBase64) {
         const payload = decodeHybridPayload(forge.util.decode64(payloadBase64));
-        const sessionKey = decryptRsaOaepSha256(privateKey, forge.util.decode64(payload.encryptedKey));
+        const sessionKey = decryptRsaOaepSha256(
+          privateKey,
+          forge.util.decode64(payload.encryptedKey),
+        );
         return aesGcm.withKey(sessionKey).decrypt(payload);
       },
       sign(plaintext) {

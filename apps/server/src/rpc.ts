@@ -1,5 +1,11 @@
 import { ORPCError, os, type } from "@orpc/server";
-import { log, readServiceServerStatus, requireRegisteredServer, resetServiceServerStateForTests, state } from "./state";
+import {
+  log,
+  readServiceServerStatus,
+  requireRegisteredServer,
+  resetServiceServerStateForTests,
+  state,
+} from "./state";
 import {
   acceptSessionTicket,
   authenticateProtectedServer,
@@ -36,28 +42,28 @@ export const serviceRouter = {
       }
     }),
 
-    authenticate: os.input(type<{ requestId?: string } | undefined>()).handler(async ({ input }) => {
-      try {
-        requireRegisteredServer();
-        const response = await authenticateProtectedServer(input?.requestId);
-        log("server certificate authenticated", `request ${response.requestId}`);
-        return response;
-      } catch (error) {
-        reject("UNAUTHORIZED", error);
-      }
-    }),
-
-    acceptSession: os
-      .input(type<AcceptSessionInput>())
-      .handler(({ input }) => {
+    authenticate: os
+      .input(type<{ requestId?: string } | undefined>())
+      .handler(async ({ input }) => {
         try {
-          const server = acceptSessionTicket(input);
-          log("session key accepted", `session ${input.sessionId}`);
-          return server;
+          requireRegisteredServer();
+          const response = await authenticateProtectedServer(input?.requestId);
+          log("server certificate authenticated", `request ${response.requestId}`);
+          return response;
         } catch (error) {
-          reject("BAD_REQUEST", error);
+          reject("UNAUTHORIZED", error);
         }
       }),
+
+    acceptSession: os.input(type<AcceptSessionInput>()).handler(({ input }) => {
+      try {
+        const server = acceptSessionTicket(input);
+        log("session key accepted", `session ${input.sessionId}`);
+        return server;
+      } catch (error) {
+        reject("BAD_REQUEST", error);
+      }
+    }),
 
     closeSession: os.handler(() => {
       const { closedSession, serverStatus } = closeLocalSession();

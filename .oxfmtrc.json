@@ -1,8 +1,4 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
-  "ignorePatterns": [
-    "**/dist/**",
-    "**/routeTree.gen.ts",
-    "**/.tanstack/**"
-  ]
+  "ignorePatterns": ["**/dist/**", "**/routeTree.gen.ts", "**/.tanstack/**"]
 }

@@ -49,7 +49,11 @@ export const ttpRouter = {
     user: os.input(type<UserAuthenticationInput>()).handler(({ input }) => {
       try {
         const { request, response } = authenticateUserForServer(input);
-        log("ttp", "session key issued", `session ${response.sessionId} for request ${request.requestId}`);
+        log(
+          "ttp",
+          "session key issued",
+          `session ${response.sessionId} for request ${request.requestId}`,
+        );
         return response;
       } catch (error) {
         reject("UNAUTHORIZED", error);

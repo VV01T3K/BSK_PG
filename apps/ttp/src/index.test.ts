@@ -1,9 +1,4 @@
-import {
-  hash,
-  rsa,
-  signedPayload,
-  type SessionTicket,
-} from "@bsk/crypto";
+import { hash, rsa, signedPayload, type SessionTicket } from "@bsk/crypto";
 import { createRouterClient } from "@orpc/server";
 import { beforeEach, describe, expect, it } from "bun:test";
 import { resetTtpStateForTests, ttpRouter } from "./index";
@@ -68,21 +63,15 @@ describe("TTP authority", () => {
     const payload = await ttp.auth.user({
       encryptedAuthMaterial: rsa
         .publicKey(publicKeyPem)
-        .encrypt(
-          JSON.stringify(signedUserRequest(user, server, requestId)),
-        ),
+        .encrypt(JSON.stringify(signedUserRequest(user, server, requestId))),
     });
 
     expect(payload.ok).toBe(true);
     const userSession = JSON.parse(
-      rsa
-        .privateKey(user.exchangePrivateKeyPem)
-        .decrypt(payload.encryptedSessionKeyForUser),
+      rsa.privateKey(user.exchangePrivateKeyPem).decrypt(payload.encryptedSessionKeyForUser),
     ) as SessionTicket;
     const serverSession = JSON.parse(
-      rsa
-        .privateKey(server.exchangePrivateKeyPem)
-        .decrypt(payload.encryptedSessionKeyForServer),
+      rsa.privateKey(server.exchangePrivateKeyPem).decrypt(payload.encryptedSessionKeyForServer),
     ) as SessionTicket;
 
     expect(userSession.sessionId).toBe(payload.sessionId);
@@ -112,14 +101,12 @@ describe("TTP authority", () => {
 
     await expect(
       ttp.auth.user({
-        encryptedAuthMaterial: rsa
-          .publicKey(publicKeyPem)
-          .encrypt(
-            JSON.stringify({
-              ...request,
-              signature: rsa.privateKey(user.authPrivateKeyPem).sign("wrong payload"),
-            }),
-          ),
+        encryptedAuthMaterial: rsa.publicKey(publicKeyPem).encrypt(
+          JSON.stringify({
+            ...request,
+            signature: rsa.privateKey(user.authPrivateKeyPem).sign("wrong payload"),
+          }),
+        ),
       }),
     ).rejects.toThrow();
   });
@@ -147,9 +134,7 @@ describe("TTP authority", () => {
     const payload = await ttp.auth.user({
       encryptedAuthMaterial: rsa
         .publicKey(publicKeyPem)
-        .encrypt(
-          JSON.stringify(signedUserRequest(user, server, "close-session")),
-        ),
+        .encrypt(JSON.stringify(signedUserRequest(user, server, "close-session"))),
     });
     const close = await ttp.session.close({
       sessionId: payload.sessionId,

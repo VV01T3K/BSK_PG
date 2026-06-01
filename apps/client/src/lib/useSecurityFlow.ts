@@ -21,10 +21,22 @@ export function useSecurityFlow() {
     ]);
 
   const forged = useMutation({ mutationFn: securityFlow.verifyForgedCertificateIsRejected });
-  const register = useMutation({ mutationFn: securityFlow.registerPrincipals, onSuccess: invalidate });
-  const authenticate = useMutation({ mutationFn: securityFlow.authenticateSession, onSuccess: invalidate });
-  const exchange = useMutation({ mutationFn: securityFlow.sendEncryptedServiceRequest, onSuccess: invalidate });
-  const closeSession = useMutation({ mutationFn: securityFlow.closeSession, onSuccess: invalidate });
+  const register = useMutation({
+    mutationFn: securityFlow.registerPrincipals,
+    onSuccess: invalidate,
+  });
+  const authenticate = useMutation({
+    mutationFn: securityFlow.authenticateSession,
+    onSuccess: invalidate,
+  });
+  const exchange = useMutation({
+    mutationFn: securityFlow.sendEncryptedServiceRequest,
+    onSuccess: invalidate,
+  });
+  const closeSession = useMutation({
+    mutationFn: securityFlow.closeSession,
+    onSuccess: invalidate,
+  });
   const reset = useMutation({
     mutationFn: securityFlow.resetEnvironment,
     onSuccess: async () => {

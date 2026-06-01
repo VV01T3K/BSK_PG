@@ -1,4 +1,5 @@
 # Bezpieczeństwo Systemów Komputerowych – Projekt
+
 # Security of Computer Systems – Project
 
 **Emulating environment with Trusted Third Party and Client-Server data exchange scenario**
@@ -7,7 +8,7 @@ Piotr Rajchowski
 
 Version 1.10, Gdańsk, 23.02.2026
 
-*Gdańsk University of Technology — Faculty of Electronics, Telecommunications and Informatics*
+_Gdańsk University of Technology — Faculty of Electronics, Telecommunications and Informatics_
 
 ---
 
@@ -52,7 +53,7 @@ flowchart TB
     style USER fill:#fce5cd,stroke:#333
 ```
 
-*Fig. 1 – Block diagram of emulated environment with physical PC and two VMs.*
+_Fig. 1 – Block diagram of emulated environment with physical PC and two VMs._
 
 ### General usage scenario
 
@@ -67,6 +68,7 @@ TTP validates the response from User; if the validation is positive, it sends an
 User and Server are authenticated and have a valid session key, so the requested service can be started. From now on, the encrypted data (using the session key) are exchanged between User and Server. After finishing the process, the session is closed. The next service request repeats the authentication process.
 
 > **Note:**
+>
 > - The TTP public key can be sent to User / Server just after the login phase was initiated.
 > - The public User's and Server's IDs must be generated using a secure hash algorithm.
 
@@ -96,7 +98,7 @@ sequenceDiagram
     U->>S: End of session
 ```
 
-*Fig. 2 – Illustration of data exchange between User, Server and TTP.*
+_Fig. 2 – Illustration of data exchange between User, Server and TTP._
 
 ### Key requirements
 
@@ -130,26 +132,28 @@ Only **one submission date** is planned. In case of obtaining an insufficient nu
 
 #### PROJECT SUBMISSION – Presentation during classes
 
-| # | Task | Points |
-|---|------|--------|
-| 1 | Generation of public key certificates, session keys, correct user authentication (existence of three independent applications), implementation of application's logs. | 4 |
-| 2 | Creation of network environment with at least 2 virtual machines (e.g. TTP and Server). | 5 |
-| 3 | Demonstration of correct implementation of assumed project functionality (i.e. correct authentication of user-server with involved TTP, data transfer between client-server). | 5 |
-| 4 | Presentation of correct and incorrect validation of authentication when the certificate was forged by attacker (pointing out resistance to man-in-the-middle attack). | 6 |
+| #   | Task                                                                                                                                                                          | Points |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| 1   | Generation of public key certificates, session keys, correct user authentication (existence of three independent applications), implementation of application's logs.         | 4      |
+| 2   | Creation of network environment with at least 2 virtual machines (e.g. TTP and Server).                                                                                       | 5      |
+| 3   | Demonstration of correct implementation of assumed project functionality (i.e. correct authentication of user-server with involved TTP, data transfer between client-server). | 5      |
+| 4   | Presentation of correct and incorrect validation of authentication when the certificate was forged by attacker (pointing out resistance to man-in-the-middle attack).         | 6      |
 
 #### REPORTS – The report is evaluated only after project presentation
 
-| # | Task | Points |
-|---|------|--------|
-| 6 | **Partial report (presentation only) for the control meeting** (+ code, + presentation during classes) | 5 |
-| 7 | **Project report** (+ code, + University GIT repository, + pointing bibliography in the report) | 15 |
+| #   | Task                                                                                                   | Points |
+| --- | ------------------------------------------------------------------------------------------------------ | ------ |
+| 6   | **Partial report (presentation only) for the control meeting** (+ code, + presentation during classes) | 5      |
+| 7   | **Project report** (+ code, + University GIT repository, + pointing bibliography in the report)        | 15     |
 
 **Item 6 — Minimal requirements:**
+
 - Presentation: e.g. possibility of certificate generation, authentication of two identities; basic version of client / server / TTP applications **(3 points)**.
 - Code in University's GitLab repository shared with teacher **(2 points)**.
 - Sending a 1-page description/report on eNauczanie platform is not obligatory.
 
 **Item 7 — Project report breakdown:**
+
 - Description of realised task **(4 points)**.
 - Description of key application functionality, pointing out code fragments as listings **(3 points)**.
 - Code documentation using Doxygen **(3 points)**.

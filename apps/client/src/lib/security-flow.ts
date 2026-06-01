@@ -2,7 +2,10 @@ import { aesGcm, hash, random, rsa, signedPayload, type SessionTicket } from "@b
 import { service, ttpProtocol, type UserAuthenticationRequest } from "#/api";
 import { clientSecurityState, type RegisteredUser } from "./client-security-state";
 
-type RegisteredServer = Awaited<ReturnType<typeof service.state>> & { serverId: string; certificatePem: string };
+type RegisteredServer = Awaited<ReturnType<typeof service.state>> & {
+  serverId: string;
+  certificatePem: string;
+};
 
 /** Browser-side protocol steps. React components use these through useSecurityFlow(). */
 export const securityFlow = {
@@ -71,7 +74,10 @@ export const securityFlow = {
     try {
       await ttpProtocol.authenticateUser(request);
     } catch (error) {
-      return { rejected: true, message: error instanceof Error ? error.message : "forged certificate rejected" };
+      return {
+        rejected: true,
+        message: error instanceof Error ? error.message : "forged certificate rejected",
+      };
     }
 
     throw new Error("forged certificate was unexpectedly accepted");
@@ -120,12 +126,16 @@ function createUserAuthenticationRequest(
 
   return {
     ...request,
-    signature: rsa.privateKey(user.authKeyPair.privateKeyPem).sign(userAuthenticationPayload(request)),
+    signature: rsa
+      .privateKey(user.authKeyPair.privateKeyPem)
+      .sign(userAuthenticationPayload(request)),
   };
 }
 
 function decryptSessionTicket(user: RegisteredUser, encryptedTicket: string): SessionTicket {
-  return JSON.parse(rsa.privateKey(user.exchangeKeyPair.privateKeyPem).decrypt(encryptedTicket)) as SessionTicket;
+  return JSON.parse(
+    rsa.privateKey(user.exchangeKeyPair.privateKeyPem).decrypt(encryptedTicket),
+  ) as SessionTicket;
 }
 
 function userAuthenticationPayload(input: {

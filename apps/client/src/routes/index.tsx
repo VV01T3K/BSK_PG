@@ -32,7 +32,12 @@ function SecurityFlowPage() {
       description: "User and Server register with the TTP and receive certificates.",
       complete: flow.registrationComplete,
       icon: <KeyRoundIcon />,
-      button: { label: "Register", icon: <PlayIcon />, onClick: () => flow.register.mutate(), disabled: busy },
+      button: {
+        label: "Register",
+        icon: <PlayIcon />,
+        onClick: () => flow.register.mutate(),
+        disabled: busy,
+      },
     },
     {
       title: "2. Authenticate",
@@ -76,9 +81,12 @@ function SecurityFlowPage() {
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-5 p-6">
       <section className="flex flex-col gap-2">
         <p className="text-sm font-medium text-muted-foreground">BSK / SCS project</p>
-        <h1 className="text-3xl font-semibold tracking-normal text-foreground">Trusted Third Party flow</h1>
+        <h1 className="text-3xl font-semibold tracking-normal text-foreground">
+          Trusted Third Party flow
+        </h1>
         <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-          Register, authenticate, exchange AES-256 encrypted service data, and verify forged certificate rejection.
+          Register, authenticate, exchange AES-256 encrypted service data, and verify forged
+          certificate rejection.
         </p>
       </section>
 
@@ -101,10 +109,19 @@ function SecurityFlowPage() {
           <CardDescription>Only the evidence needed for the presentation flow.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 text-sm md:grid-cols-2">
-          <Evidence label="User" value={clientStatus?.userRegistered ? "registered" : "not registered"} />
+          <Evidence
+            label="User"
+            value={clientStatus?.userRegistered ? "registered" : "not registered"}
+          />
           <Evidence label="Server" value={server?.registered ? "registered" : "not registered"} />
-          <Evidence label="Session" value={flow.sessionEstablished ? clientStatus?.sessionId : "not established"} />
-          <Evidence label="Service" value={flow.serviceExchanged ? "encrypted exchange complete" : "not used"} />
+          <Evidence
+            label="Session"
+            value={flow.sessionEstablished ? clientStatus?.sessionId : "not established"}
+          />
+          <Evidence
+            label="Service"
+            value={flow.serviceExchanged ? "encrypted exchange complete" : "not used"}
+          />
           <Evidence label="Forged certificate" value={forged.data?.message ?? "not tested"} />
           <div className="flex flex-wrap gap-2">
             <Button

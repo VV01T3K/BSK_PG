@@ -6,7 +6,8 @@ type ButtonVariant = "default" | "outline" | "secondary" | "ghost" | "destructiv
 
 const variants: Record<ButtonVariant, string> = {
   default: "bg-primary text-primary-foreground hover:bg-primary/90",
-  outline: "border bg-background hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30",
+  outline:
+    "border bg-background hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30",
   secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
   ghost: "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
   destructive: "bg-destructive text-white hover:bg-destructive/90",

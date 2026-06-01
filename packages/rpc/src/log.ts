@@ -38,7 +38,12 @@ export function createSecurityLogger(fileNames: readonly string[]) {
     ),
   );
 
-  function log(actor: SecurityLogActor, event: string, details: string, level: SecurityLogLevel = "info") {
+  function log(
+    actor: SecurityLogActor,
+    event: string,
+    details: string,
+    level: SecurityLogLevel = "info",
+  ) {
     logger[level]({ actor, details }, event);
   }
 

@@ -9,7 +9,9 @@ import type {
 const RSA_BITS = 4096;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export function createCertificateAuthority(options: CertificateAuthorityOptions): CertificateAuthority {
+export function createCertificateAuthority(
+  options: CertificateAuthorityOptions,
+): CertificateAuthority {
   const keys = forge.pki.rsa.generateKeyPair({ bits: RSA_BITS, workers: -1 });
   const cert = forge.pki.createCertificate();
   const attrs = [
