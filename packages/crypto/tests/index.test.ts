@@ -1,5 +1,5 @@
 import forge from "node-forge";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "bun:test";
 import { aesGcm, hash, random, rsa, type RsaPair } from "../src/index";
 
 /** Flip the first byte of a base64 blob so the decoded bytes are guaranteed to differ. */

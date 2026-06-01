@@ -5,7 +5,7 @@ import {
   type SessionTicket,
 } from "@bsk/crypto";
 import { createRouterClient } from "@orpc/server";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "bun:test";
 import { resetTtpStateForTests, ttpRouter } from "./index";
 
 type Role = "user" | "server";

@@ -7,7 +7,7 @@ import viteReact, { reactCompilerPreset } from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import babel from "@rolldown/plugin-babel";
 
-const config = defineConfig(({ mode }) => ({
+const config = defineConfig(() => ({
   server: {
     host: true,
   },
@@ -15,7 +15,7 @@ const config = defineConfig(({ mode }) => ({
   plugins: [
     tailwindcss(),
     tanstackStart(),
-    mode === "test" ? undefined : nitro({ preset: "bun" }),
+    nitro({ preset: "bun" }),
     viteReact(),
     babel({
       presets: [reactCompilerPreset()],
