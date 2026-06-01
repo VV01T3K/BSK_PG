@@ -4,7 +4,6 @@ import { ttpRouter } from "./rpc";
 
 export { ttpRouter } from "./rpc";
 export { resetTtpStateForTests } from "./state";
-export type { EventLogEntry } from "@bsk/rpc/log";
 export type { PrincipalPublicKeys, UserAuthenticationRequest } from "./protocol";
 export type { TtpRouter } from "./rpc";
 

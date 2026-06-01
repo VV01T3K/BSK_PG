@@ -1,10 +1,10 @@
-import { createFileLogger } from "@bsk/rpc/log";
+import { createSecurityLogger } from "@bsk/rpc/log";
 import type { PrincipalRecord, Role, SessionRecord } from "./types";
 
 export const principals = new Map<string, PrincipalRecord>();
 export const sessions = new Map<string, SessionRecord>();
 
-const logger = createFileLogger(["application.log", "ttp.log"]);
+const logger = createSecurityLogger(["application.log", "ttp.log"]);
 
 export const log = logger.log;
 

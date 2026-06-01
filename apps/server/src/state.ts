@@ -1,5 +1,5 @@
-import { createFileLogger, type EventLogEntry } from "@bsk/rpc/log";
 import { type RsaPair } from "@bsk/crypto";
+import { createSecurityLogger, type SecurityLogLevel } from "@bsk/rpc/log";
 import type { ServiceServerStatus } from "./types";
 
 type ServiceServerState = {
@@ -14,9 +14,9 @@ type ServiceServerState = {
 
 export const state: ServiceServerState = {};
 
-const logger = createFileLogger(["application.log", "server.log"]);
+const logger = createSecurityLogger(["application.log", "server.log"]);
 
-export function log(event: string, details: string, level: EventLogEntry["level"] = "info") {
+export function log(event: string, details: string, level: SecurityLogLevel = "info") {
   logger.log("server", event, details, level);
 }
 

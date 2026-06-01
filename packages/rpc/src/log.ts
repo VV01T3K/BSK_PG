@@ -1,56 +1,53 @@
-import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { truncateSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, isAbsolute, join } from "node:path";
+import { join } from "node:path";
+import pino from "pino";
+import pretty from "pino-pretty";
 
-export interface EventLogEntry {
-  timestamp: string;
-  actor: "ttp" | "user" | "server";
-  level: "info" | "warn" | "error";
-  event: string;
-  details: string;
+export type SecurityLogActor = "ttp" | "user" | "server";
+export type SecurityLogLevel = "info" | "warn" | "error";
+
+const DEFAULT_LOG_DIR = "../../logs";
+
+function logDirectory() {
+  return process.env.LOG_DIR ?? (process.env.NODE_ENV === "test" ? tmpdir() : DEFAULT_LOG_DIR);
 }
 
-function resolveLogPath(filePath: string): string {
-  if (isAbsolute(filePath)) {
-    return filePath;
-  }
-  const baseDir = process.env.LOG_DIR ?? (process.env.NODE_ENV === "test" ? tmpdir() : "../../logs");
-  return join(baseDir, filePath);
+function logPath(fileName: string) {
+  return join(logDirectory(), fileName);
 }
 
-function normalizeLogValue(value: string): string {
-  return value.replace(/\s+/g, " ").trim();
-}
+export function createSecurityLogger(fileNames: readonly string[]) {
+  const sync = process.env.NODE_ENV === "test";
+  const paths = fileNames.map(logPath);
+  const logger = pino(
+    { base: undefined },
+    pino.multistream(
+      paths.map((path) =>
+        pretty({
+          append: true,
+          destination: path,
+          ignore: "pid,hostname,actor,details",
+          messageFormat: "{actor}: {msg} - {details}",
+          mkdir: true,
+          singleLine: true,
+          sync,
+          translateTime: "SYS:yyyy-mm-dd HH:MM:ss.l",
+        }),
+      ),
+    ),
+  );
 
-function formatLogEntry(entry: EventLogEntry): string {
-  const level = entry.level.toUpperCase().padEnd(5, " ");
-  return `[${entry.timestamp}] ${level} ${entry.actor}: ${normalizeLogValue(entry.event)} - ${normalizeLogValue(entry.details)}`;
-}
-
-export function createFileLogger(filePaths: string | string[]) {
-  const resolvedPaths = (Array.isArray(filePaths) ? filePaths : [filePaths]).map(resolveLogPath);
-
-  function log(actor: EventLogEntry["actor"], event: string, details: string, level: EventLogEntry["level"] = "info") {
-    const entry: EventLogEntry = {
-      timestamp: new Date().toISOString(),
-      actor,
-      level,
-      event,
-      details,
-    };
-    for (const resolvedPath of resolvedPaths) {
-      mkdirSync(dirname(resolvedPath), { recursive: true });
-      appendFileSync(resolvedPath, `${formatLogEntry(entry)}\n`);
-    }
+  function log(actor: SecurityLogActor, event: string, details: string, level: SecurityLogLevel = "info") {
+    logger[level]({ actor, details }, event);
   }
 
   function reset() {
-    for (const resolvedPath of resolvedPaths) {
-      if (existsSync(resolvedPath)) {
-        writeFileSync(resolvedPath, "");
-      }
+    logger.flush();
+    for (const path of paths) {
+      truncateSync(path);
     }
   }
 
-  return { log, reset };
+  return { log, reset, pino: logger };
 }
