@@ -14,7 +14,7 @@ type ServiceServerState = {
 
 export const state: ServiceServerState = {};
 
-const logger = createFileLogger("server.log");
+const logger = createFileLogger(["application.log", "server.log"]);
 
 export function log(event: string, details: string, level: EventLogEntry["level"] = "info") {
   logger.log("server", event, details, level);

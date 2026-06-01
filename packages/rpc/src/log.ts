@@ -18,8 +18,17 @@ function resolveLogPath(filePath: string): string {
   return join(baseDir, filePath);
 }
 
-export function createFileLogger(filePath: string) {
-  const resolvedPath = resolveLogPath(filePath);
+function normalizeLogValue(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function formatLogEntry(entry: EventLogEntry): string {
+  const level = entry.level.toUpperCase().padEnd(5, " ");
+  return `[${entry.timestamp}] ${level} ${entry.actor}: ${normalizeLogValue(entry.event)} - ${normalizeLogValue(entry.details)}`;
+}
+
+export function createFileLogger(filePaths: string | string[]) {
+  const resolvedPaths = (Array.isArray(filePaths) ? filePaths : [filePaths]).map(resolveLogPath);
 
   function log(actor: EventLogEntry["actor"], event: string, details: string, level: EventLogEntry["level"] = "info") {
     const entry: EventLogEntry = {
@@ -29,13 +38,17 @@ export function createFileLogger(filePath: string) {
       event,
       details,
     };
-    mkdirSync(dirname(resolvedPath), { recursive: true });
-    appendFileSync(resolvedPath, `${JSON.stringify(entry)}\n`);
+    for (const resolvedPath of resolvedPaths) {
+      mkdirSync(dirname(resolvedPath), { recursive: true });
+      appendFileSync(resolvedPath, `${formatLogEntry(entry)}\n`);
+    }
   }
 
   function reset() {
-    if (existsSync(resolvedPath)) {
-      writeFileSync(resolvedPath, "");
+    for (const resolvedPath of resolvedPaths) {
+      if (existsSync(resolvedPath)) {
+        writeFileSync(resolvedPath, "");
+      }
     }
   }
 

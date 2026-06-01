@@ -4,7 +4,7 @@ import type { PrincipalRecord, Role, SessionRecord } from "./types";
 export const principals = new Map<string, PrincipalRecord>();
 export const sessions = new Map<string, SessionRecord>();
 
-const logger = createFileLogger("ttp.log");
+const logger = createFileLogger(["application.log", "ttp.log"]);
 
 export const log = logger.log;
 

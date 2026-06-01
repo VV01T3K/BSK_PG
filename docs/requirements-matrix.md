@@ -31,7 +31,7 @@ There is no separate "normal RSA" application mode.
 | 17 | Pseudorandom generator for session keys. | Done | `random.sessionKey()` uses `node-forge` random bytes. | None. | Randomness is covered by tests. |
 | 18 | AES session key should be 256-bit. | Done | Session key is 32 bytes; tests assert length. | None. | AES-GCM mode adds integrity/authentication tag. |
 | 19 | Status/message icons for application state. | Done | Lucide icons in `apps/client/src/routes/index.tsx` and `StepCard`. | None. | Separate icons for register, authenticate, service, forged cert, close/reset. |
-| 20 | Server and TTP save logs with timestamps. | Done | `packages/rpc/src/log.ts`; Server/TTP call `log(...)`. | During demo, show `logs/server.log` and `logs/ttp.log`. | Logs are JSON-line structured with actor/level/event/details. |
+| 20 | Server and TTP save logs with timestamps. | Done | `packages/rpc/src/log.ts`; Server/TTP call `log(...)`. | During demo, show `logs/application.log`, `logs/server.log`, and `logs/ttp.log`. | Logs are plain-text lines with timestamp, level, actor, event, and details. |
 | 21 | Only one User expected. | Done | Client state stores one current user/session. | None. | Reset can clear the single-user demo state quickly. |
 | 22 | Available AES/RSA/SHA libraries may be used. | Done | Uses `node-forge`. | None. | Library usage is wrapped behind a small local crypto API. |
 | 23 | Cipher parameters can be constants. | Done | RSA/AES/GCM constants in `packages/crypto/src/crypto.ts`. | None. | Centralized constants avoid inconsistent app settings. |
@@ -59,7 +59,7 @@ There is no separate "normal RSA" application mode.
 | Docker Compose environment | Teacher accepted it as VM-like environment. | Keep. |
 | Automated tests | Supports report testing section and reduces demo risk. | Keep. |
 | Shared crypto/RPC packages | Reduces duplicated code across Client, Server, and TTP. | Keep. |
-| JSON-line structured logs | Meets timestamped log requirement cleanly. | Keep. |
+| Plain-text shared and per-service logs | Meets timestamped log requirement and stays readable in normal text editors. | Keep. |
 | Doxygen config | Needed for documentation requirement. | Keep, finish later. |
 
 ## Missing Summary
