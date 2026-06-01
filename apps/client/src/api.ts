@@ -23,6 +23,10 @@ export const ttpProtocol = {
     });
   },
 
+  requestUserAuthentication(requestId: string) {
+    return ttp.auth.redirect({ requestId });
+  },
+
   async authenticateUser(request: UserAuthenticationRequest) {
     return ttp.auth.user({
       encryptedAuthMaterial: await encryptForTtp(JSON.stringify(request)),

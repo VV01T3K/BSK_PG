@@ -38,6 +38,10 @@ export type ServerSessionKeyInput = {
   requestId: string;
 };
 
+export type UserAuthRedirectInput = {
+  requestId: string;
+};
+
 export function ttpPublicKeyResponse() {
   return {
     publicKeyPem: ca.publicKeyPem,
@@ -91,6 +95,27 @@ export function authenticateServerCertificate(input: ServerAuthenticationInput) 
     serverId: input.serverId,
     validatedAt,
   } as const;
+}
+
+/**
+ * The TTP's "request for User authentication" (Fig. 2: "User Auth. redirect").
+ * After the server has been validated, the User asks the TTP to confirm it should
+ * authenticate. The TTP replies that the server was authenticated and that the User
+ * may now submit its authentication data for this request.
+ */
+export function requestUserAuthentication(input: UserAuthRedirectInput) {
+  const pendingAuth = pendingAuths.get(input.requestId);
+
+  if (!pendingAuth) {
+    throw new Error(`no validated server authentication for request ${input.requestId}`);
+  }
+
+  return {
+    requestId: pendingAuth.requestId,
+    serverId: pendingAuth.serverId,
+    serverAuthenticated: true as const,
+    action: "submit-user-authentication" as const,
+  };
 }
 
 export function authenticateUserForServer(input: UserAuthenticationInput) {

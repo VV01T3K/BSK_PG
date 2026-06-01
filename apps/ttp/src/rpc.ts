@@ -6,12 +6,14 @@ import {
   authenticateUserForServer,
   closeSession,
   registerPrincipal,
+  requestUserAuthentication,
   serverSessionKey,
   ttpPublicKeyResponse,
   type RegisterPrincipalInput,
   type ServerAuthenticationInput,
   type ServerSessionKeyInput,
   type UserAuthenticationInput,
+  type UserAuthRedirectInput,
 } from "./protocol";
 import { log } from "./state";
 
@@ -43,6 +45,16 @@ export const ttpRouter = {
       try {
         const response = authenticateServerCertificate(input);
         log("server", "server certificate validated", `request ${input.requestId}`);
+        return response;
+      } catch (error) {
+        reject("UNAUTHORIZED", error);
+      }
+    }),
+
+    redirect: os.input(type<UserAuthRedirectInput>()).handler(({ input }) => {
+      try {
+        const response = requestUserAuthentication(input);
+        log("ttp", "user authentication requested", `redirect to user for request ${input.requestId}`);
         return response;
       } catch (error) {
         reject("UNAUTHORIZED", error);

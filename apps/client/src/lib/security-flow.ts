@@ -38,6 +38,12 @@ export const securityFlow = {
     const user = registeredUser();
     const server = await loadRegisteredServer();
     const serviceRequest = await service.requestService({ userId: user.id });
+
+    const redirect = await ttpProtocol.requestUserAuthentication(serviceRequest.requestId);
+    if (redirect.serverId !== server.serverId) {
+      throw new Error("TTP redirect references an unexpected server");
+    }
+
     const request = createUserAuthenticationRequest(user, server, {
       requestId: serviceRequest.requestId,
     });
@@ -72,6 +78,7 @@ export const securityFlow = {
     const user = registeredUser();
     const server = await loadRegisteredServer();
     const serviceRequest = await service.requestService({ userId: user.id });
+    await ttpProtocol.requestUserAuthentication(serviceRequest.requestId);
     const request = createUserAuthenticationRequest(user, server, {
       requestId: serviceRequest.requestId,
       userCertificatePem: server.certificatePem,
