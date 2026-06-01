@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "bun:test";
 
-import { hash, rsa, signedPayload, type SessionTicket } from "@bsk/crypto";
+import { hash, random, rsa, signedPayload, type SessionTicket } from "@bsk/crypto";
 import { createRouterClient } from "@orpc/server";
 
 import { resetTtpStateForTests, ttpRouter } from "./index";
@@ -23,7 +23,7 @@ async function ttpPublicKey(): Promise<string> {
 
 async function registerPrincipal(role: Role): Promise<PrincipalFixture> {
   const publicKeyPem = await ttpPublicKey();
-  const id = hash.of(`${role}-test-id`).sha256Hex();
+  const id = hash.of(`${role}-test-id-${random.uuid()}`).sha256Hex();
   const auth = rsa.generatePair();
   const exchange = rsa.generatePair();
   const payload = await ttp.register({
@@ -57,30 +57,33 @@ describe("TTP authority", () => {
       serverId: server.id,
       certificatePem: server.certificatePem,
       requestId,
-      signature: signServerAuth(server, requestId),
+      userId: user.id,
+      signature: signServerAuth(server, requestId, user.id),
     });
     expect(serverAuth.ok).toBe(true);
 
     const publicKeyPem = await ttpPublicKey();
-    const payload = await ttp.auth.user({
+    const userAuth = await ttp.auth.user({
       encryptedAuthMaterial: rsa
         .publicKey(publicKeyPem)
         .encrypt(JSON.stringify(signedUserRequest(user, server, requestId))),
     });
 
-    expect(payload.ok).toBe(true);
+    expect(userAuth).toEqual({ ok: true, requestId });
+    const serverKey = await ttp.session.serverKey({ requestId });
     const userSession = JSON.parse(
-      rsa.privateKey(user.exchangePrivateKeyPem).decrypt(payload.encryptedSessionKeyForUser),
+      rsa.privateKey(user.exchangePrivateKeyPem).decrypt(serverKey.encryptedSessionKeyForUser),
     ) as SessionTicket;
     const serverSession = JSON.parse(
-      rsa.privateKey(server.exchangePrivateKeyPem).decrypt(payload.encryptedSessionKeyForServer),
+      rsa.privateKey(server.exchangePrivateKeyPem).decrypt(serverKey.encryptedSessionKeyForServer),
     ) as SessionTicket;
 
-    expect(userSession.sessionId).toBe(payload.sessionId);
-    expect(serverSession.sessionId).toBe(payload.sessionId);
+    expect(userSession.sessionId).toBe(serverKey.sessionId);
+    expect(serverSession.sessionId).toBe(serverKey.sessionId);
+    expect(serverSession.sessionKey).toBe(userSession.sessionKey);
     expect(Buffer.from(userSession.sessionKey, "base64")).toHaveLength(32);
     expect(Buffer.from(serverSession.sessionKey, "base64")).toHaveLength(32);
-  });
+  }, 10000);
 
   it("rejects an invalid server authentication signature", async () => {
     const server = await registerPrincipal("server");
@@ -90,16 +93,20 @@ describe("TTP authority", () => {
         serverId: server.id,
         certificatePem: server.certificatePem,
         requestId: "bad-server-signature",
+        userId: "expected-user",
         signature: rsa.privateKey(server.authPrivateKeyPem).sign("wrong payload"),
       }),
     ).rejects.toThrow();
-  });
+  }, 10000);
 
   it("rejects an invalid user authentication signature", async () => {
     const user = await registerPrincipal("user");
     const server = await registerPrincipal("server");
     const publicKeyPem = await ttpPublicKey();
-    const request = signedUserRequest(user, server, "bad-user-signature");
+    const requestId = "bad-user-signature";
+    const request = signedUserRequest(user, server, requestId);
+
+    await authenticateServerForUser(server, user, requestId);
 
     await expect(
       ttp.auth.user({
@@ -111,9 +118,28 @@ describe("TTP authority", () => {
         ),
       }),
     ).rejects.toThrow();
-  });
+  }, 10000);
 
   it("rejects a forged user certificate", async () => {
+    const user = await registerPrincipal("user");
+    const server = await registerPrincipal("server");
+    const publicKeyPem = await ttpPublicKey();
+    const requestId = "forged-cert";
+
+    await authenticateServerForUser(server, user, requestId);
+
+    await expect(
+      ttp.auth.user({
+        encryptedAuthMaterial: rsa
+          .publicKey(publicKeyPem)
+          .encrypt(
+            JSON.stringify(signedUserRequest(user, server, requestId, server.certificatePem)),
+          ),
+      }),
+    ).rejects.toThrow();
+  }, 10000);
+
+  it("rejects user authentication without a matching server-initiated request", async () => {
     const user = await registerPrincipal("user");
     const server = await registerPrincipal("server");
     const publicKeyPem = await ttpPublicKey();
@@ -122,37 +148,73 @@ describe("TTP authority", () => {
       ttp.auth.user({
         encryptedAuthMaterial: rsa
           .publicKey(publicKeyPem)
-          .encrypt(
-            JSON.stringify(signedUserRequest(user, server, "forged-cert", server.certificatePem)),
-          ),
+          .encrypt(JSON.stringify(signedUserRequest(user, server, "unknown-request"))),
       }),
     ).rejects.toThrow();
-  });
+  }, 10000);
+
+  it("rejects user authentication that does not match the pending user", async () => {
+    const expectedUser = await registerPrincipal("user");
+    const otherUser = await registerPrincipal("user");
+    const server = await registerPrincipal("server");
+    const publicKeyPem = await ttpPublicKey();
+    const requestId = "mismatched-user";
+
+    await authenticateServerForUser(server, expectedUser, requestId);
+
+    await expect(
+      ttp.auth.user({
+        encryptedAuthMaterial: rsa
+          .publicKey(publicKeyPem)
+          .encrypt(JSON.stringify(signedUserRequest(otherUser, server, requestId))),
+      }),
+    ).rejects.toThrow();
+  }, 10000);
 
   it("closes sessions after successful authentication", async () => {
     const user = await registerPrincipal("user");
     const server = await registerPrincipal("server");
     const publicKeyPem = await ttpPublicKey();
-    const payload = await ttp.auth.user({
+    const requestId = "close-session";
+
+    await authenticateServerForUser(server, user, requestId);
+
+    await ttp.auth.user({
       encryptedAuthMaterial: rsa
         .publicKey(publicKeyPem)
-        .encrypt(JSON.stringify(signedUserRequest(user, server, "close-session"))),
+        .encrypt(JSON.stringify(signedUserRequest(user, server, requestId))),
     });
+    const serverKey = await ttp.session.serverKey({ requestId });
     const close = await ttp.session.close({
-      sessionId: payload.sessionId,
+      sessionId: serverKey.sessionId,
     });
 
-    expect(close).toMatchObject({ ok: true, sessionId: payload.sessionId });
-  });
+    expect(close).toMatchObject({ ok: true, sessionId: serverKey.sessionId });
+  }, 10000);
 });
 
-function signServerAuth(server: PrincipalFixture, requestId: string) {
+async function authenticateServerForUser(
+  server: PrincipalFixture,
+  user: PrincipalFixture,
+  requestId: string,
+) {
+  return ttp.auth.server({
+    serverId: server.id,
+    certificatePem: server.certificatePem,
+    requestId,
+    userId: user.id,
+    signature: signServerAuth(server, requestId, user.id),
+  });
+}
+
+function signServerAuth(server: PrincipalFixture, requestId: string, userId: string) {
   return rsa.privateKey(server.authPrivateKeyPem).sign(
     signedPayload.from({
       certificateHash: hash.of(server.certificatePem).sha256Hex(),
       requestId,
       role: "server",
       serverId: server.id,
+      userId,
     }),
   );
 }

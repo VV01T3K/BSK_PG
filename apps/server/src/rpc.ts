@@ -1,20 +1,13 @@
 import { ORPCError, os, type } from "@orpc/server";
 
 import {
-  acceptSessionTicket,
-  authenticateProtectedServer,
   closeLocalSession,
   exchangeProtectedServiceData,
+  fetchServerSessionKey,
   registerProtectedServer,
-  type AcceptSessionInput,
+  requestService,
 } from "./protocol";
-import {
-  log,
-  readServiceServerStatus,
-  requireRegisteredServer,
-  resetServiceServerStateForTests,
-  state,
-} from "./state";
+import { log, readServiceServerStatus, resetServiceServerStateForTests, state } from "./state";
 import type { SessionEncryptedPayload, ServiceServerStatus } from "./types";
 
 function reject(code: "BAD_REQUEST" | "UNAUTHORIZED", error: unknown): never {
@@ -25,6 +18,16 @@ function reject(code: "BAD_REQUEST" | "UNAUTHORIZED", error: unknown): never {
 
 export const serviceRouter = {
   state: os.handler(() => readServiceServerStatus()),
+
+  requestService: os.input(type<{ userId: string }>()).handler(async ({ input }) => {
+    try {
+      const response = await requestService(input);
+      log("service requested", `request ${response.requestId} for user ${input.userId}`);
+      return response;
+    } catch (error) {
+      reject("UNAUTHORIZED", error);
+    }
+  }),
 
   reset: os.handler(() => {
     resetServiceServerStateForTests();
@@ -43,23 +46,10 @@ export const serviceRouter = {
       }
     }),
 
-    authenticate: os
-      .input(type<{ requestId?: string } | undefined>())
-      .handler(async ({ input }) => {
-        try {
-          requireRegisteredServer();
-          const response = await authenticateProtectedServer(input?.requestId);
-          log("server certificate authenticated", `request ${response.requestId}`);
-          return response;
-        } catch (error) {
-          reject("UNAUTHORIZED", error);
-        }
-      }),
-
-    acceptSession: os.input(type<AcceptSessionInput>()).handler(({ input }) => {
+    fetchKey: os.input(type<{ requestId: string }>()).handler(async ({ input }) => {
       try {
-        const server = acceptSessionTicket(input);
-        log("session key accepted", `session ${input.sessionId}`);
+        const server = await fetchServerSessionKey(input);
+        log("session key fetched from TTP", `request ${input.requestId}`);
         return server;
       } catch (error) {
         reject("BAD_REQUEST", error);

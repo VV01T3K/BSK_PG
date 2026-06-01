@@ -1,9 +1,10 @@
 import { createSecurityLogger } from "@bsk/rpc/log";
 
-import type { PrincipalRecord, Role, SessionRecord } from "./types";
+import type { PendingAuthRecord, PrincipalRecord, Role, SessionRecord } from "./types";
 
 export const principals = new Map<string, PrincipalRecord>();
 export const sessions = new Map<string, SessionRecord>();
+export const pendingAuths = new Map<string, PendingAuthRecord>();
 
 const logger = createSecurityLogger(["application.log", "ttp.log"]);
 
@@ -16,5 +17,6 @@ export function principalKey(role: Role, subjectId: string): string {
 export function resetTtpStateForTests() {
   principals.clear();
   sessions.clear();
+  pendingAuths.clear();
   logger.reset();
 }

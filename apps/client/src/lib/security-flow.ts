@@ -36,23 +36,22 @@ export const securityFlow = {
 
   async authenticateSession() {
     const user = registeredUser();
-    const request = createUserAuthenticationRequest(user, await loadRegisteredServer());
+    const server = await loadRegisteredServer();
+    const serviceRequest = await service.requestService({ userId: user.id });
+    const request = createUserAuthenticationRequest(user, server, {
+      requestId: serviceRequest.requestId,
+    });
 
-    await service.server.authenticate({ requestId: request.requestId });
-    const userAuth = await ttpProtocol.authenticateUser(request);
-    const userSession = decryptSessionTicket(user, userAuth.encryptedSessionKeyForUser);
+    await ttpProtocol.authenticateUser(request);
+    const sessionRelay = await service.server.fetchKey({ requestId: serviceRequest.requestId });
+    const userSession = decryptSessionTicket(user, sessionRelay.encryptedSessionKeyForUser);
 
-    if (userSession.sessionId !== userAuth.sessionId) {
+    if (userSession.sessionId !== sessionRelay.sessionId) {
       throw new Error("TTP returned inconsistent session identifiers");
     }
 
-    await service.server.acceptSession({
-      sessionId: userAuth.sessionId,
-      encryptedSessionKeyForServer: userAuth.encryptedSessionKeyForServer,
-    });
-
     clientSecurityState.storeSession({
-      sessionId: userAuth.sessionId,
+      sessionId: sessionRelay.sessionId,
       userSessionKey: userSession.sessionKey,
     });
   },
@@ -71,7 +70,11 @@ export const securityFlow = {
   async verifyForgedCertificateIsRejected() {
     const user = registeredUser();
     const server = await loadRegisteredServer();
-    const request = createUserAuthenticationRequest(user, server, server.certificatePem);
+    const serviceRequest = await service.requestService({ userId: user.id });
+    const request = createUserAuthenticationRequest(user, server, {
+      requestId: serviceRequest.requestId,
+      userCertificatePem: server.certificatePem,
+    });
 
     try {
       await ttpProtocol.authenticateUser(request);
@@ -116,14 +119,17 @@ async function loadRegisteredServer() {
 function createUserAuthenticationRequest(
   user: RegisteredUser,
   server: RegisteredServer,
-  userCertificatePem = user.certificatePem,
+  options: {
+    requestId: string;
+    userCertificatePem?: string;
+  },
 ): UserAuthenticationRequest {
   const request = {
     userId: user.id,
-    userCertificatePem,
+    userCertificatePem: options.userCertificatePem ?? user.certificatePem,
     serverId: server.serverId,
     serverCertificatePem: server.certificatePem,
-    requestId: random.uuid(),
+    requestId: options.requestId,
   };
 
   return {

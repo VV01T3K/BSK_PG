@@ -6,9 +6,11 @@ import {
   authenticateUserForServer,
   closeSession,
   registerPrincipal,
+  serverSessionKey,
   ttpPublicKeyResponse,
   type RegisterPrincipalInput,
   type ServerAuthenticationInput,
+  type ServerSessionKeyInput,
   type UserAuthenticationInput,
 } from "./protocol";
 import { log } from "./state";
@@ -53,7 +55,7 @@ export const ttpRouter = {
         log(
           "ttp",
           "session key issued",
-          `session ${response.sessionId} for request ${request.requestId}`,
+          `request ${request.requestId} ready for server relay`,
         );
         return response;
       } catch (error) {
@@ -63,6 +65,16 @@ export const ttpRouter = {
   },
 
   session: {
+    serverKey: os.input(type<ServerSessionKeyInput>()).handler(({ input }) => {
+      try {
+        const response = serverSessionKey(input);
+        log("ttp", "server session key fetched", `request ${input.requestId}`);
+        return response;
+      } catch (error) {
+        reject("NOT_FOUND", error);
+      }
+    }),
+
     close: os.input(type<{ sessionId: string }>()).handler(({ input }) => {
       try {
         const response = closeSession(input.sessionId);
