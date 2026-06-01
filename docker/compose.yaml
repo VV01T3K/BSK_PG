@@ -1,0 +1,37 @@
+services:
+  ttp:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: ttp
+    environment:
+      LOG_DIR: /app/logs
+    ports:
+      - "3001:3001"
+
+  client:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: client
+      args:
+        VITE_TTP_API_BASE_URL: http://localhost:3001
+        VITE_SERVICE_API_BASE_URL: http://localhost:3002
+    ports:
+      - "3000:3000"
+    depends_on:
+      - ttp
+      - server
+
+  server:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: server
+    environment:
+      TTP_API_BASE_URL: http://ttp:3001
+      LOG_DIR: /app/logs
+    ports:
+      - "3002:3002"
+    depends_on:
+      - ttp

@@ -18,6 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "#/com
 import { useSecurityFlow } from "#/lib/useSecurityFlow";
 
 export const Route = createFileRoute("/")({
+  ssr: false,
   component: SecurityFlowPage,
 });
 

@@ -41,7 +41,13 @@ bun run build
 Docker Compose is used as the final VM-like environment:
 
 ```bash
-docker compose up --build
+docker compose -f docker/compose.yaml up --build
+```
+
+Stop the demo:
+
+```bash
+docker compose -f docker/compose.yaml down
 ```
 
 Services:
