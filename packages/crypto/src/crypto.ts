@@ -29,6 +29,12 @@ function decryptRsaOaepSha256(privateKey: forge.pki.rsa.PrivateKey, ciphertext: 
   return privateKey.decrypt(ciphertext, "RSA-OAEP", rsaOaepSha256());
 }
 
+function sha256Digest(value: string) {
+  const digest = forge.md.sha256.create();
+  digest.update(value, "utf8");
+  return digest;
+}
+
 function encodeHybridPayloadBase64(payload: HybridEncryptedPayload): string {
   return forge.util.encode64(forge.util.encodeUtf8(JSON.stringify(payload)));
 }
@@ -69,6 +75,15 @@ export const random = {
   sessionKey(): string {
     const key = forge.random.getBytesSync(AES_256_KEY_BYTES);
     return forge.util.encode64(key);
+  },
+};
+
+export const signedPayload = {
+  from(fields: Record<string, string>): string {
+    const sortedFields = Object.fromEntries(
+      Object.entries(fields).sort(([left], [right]) => left.localeCompare(right)),
+    );
+    return JSON.stringify(sortedFields);
   },
 };
 
@@ -135,15 +150,22 @@ export const rsa = {
 
     return {
       encrypt(plaintext) {
-        return forge.util.encode64(encryptRsaOaepSha256(publicKey, plaintext));
-      },
-      encryptHybrid(plaintext) {
         const sessionKey = random.sessionKey();
         const payload: HybridEncryptedPayload = {
           encryptedKey: forge.util.encode64(encryptRsaOaepSha256(publicKey, sessionKey)),
           ...aesGcm.withKey(sessionKey).encrypt(plaintext),
         };
         return encodeHybridPayloadBase64(payload);
+      },
+      verify(plaintext, signatureBase64) {
+        try {
+          return publicKey.verify(
+            sha256Digest(plaintext).digest().bytes(),
+            forge.util.decode64(signatureBase64),
+          );
+        } catch {
+          return false;
+        }
       },
     };
   },
@@ -153,12 +175,12 @@ export const rsa = {
 
     return {
       decrypt(payloadBase64) {
-        return decryptRsaOaepSha256(privateKey, forge.util.decode64(payloadBase64));
-      },
-      decryptHybrid(payloadBase64) {
         const payload = decodeHybridPayload(forge.util.decode64(payloadBase64));
         const sessionKey = decryptRsaOaepSha256(privateKey, forge.util.decode64(payload.encryptedKey));
         return aesGcm.withKey(sessionKey).decrypt(payload);
+      },
+      sign(plaintext) {
+        return forge.util.encode64(privateKey.sign(sha256Digest(plaintext)));
       },
     };
   },

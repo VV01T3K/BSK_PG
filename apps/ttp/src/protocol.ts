@@ -1,10 +1,8 @@
-import { random, rsa, type SessionTicket } from "@bsk/crypto";
+import { hash, random, rsa, signedPayload, type SessionTicket } from "@bsk/crypto";
 import { issueCertificate, validateCertificate } from "./certificates";
 import { ca } from "./crypto";
 import { principalKey, principals, sessions } from "./state";
 import type { PrincipalRecord, Role, SessionRecord } from "./types";
-
-const SESSION_TTL_MS = 15 * 60 * 1000;
 
 export type PrincipalPublicKeys = PrincipalRecord["publicKeys"];
 
@@ -18,6 +16,7 @@ export type ServerAuthenticationInput = {
   serverId: string;
   certificatePem: string;
   requestId: string;
+  signature: string;
 };
 
 export type UserAuthenticationRequest = {
@@ -26,6 +25,7 @@ export type UserAuthenticationRequest = {
   serverId: string;
   serverCertificatePem: string;
   requestId: string;
+  signature: string;
 };
 
 export type UserAuthenticationInput = {
@@ -64,11 +64,12 @@ export function registerPrincipal(input: RegisterPrincipalInput) {
 }
 
 export function authenticateServerCertificate(input: ServerAuthenticationInput) {
-  validateCertificate({
+  const server = validateCertificate({
     role: "server",
     subjectId: input.serverId,
     certificatePem: input.certificatePem,
   });
+  verifyPrincipalSignature(server, serverAuthenticationPayload(input), input.signature);
 
   return {
     ok: true,
@@ -90,6 +91,7 @@ export function authenticateUserForServer(input: UserAuthenticationInput) {
     subjectId: request.serverId,
     certificatePem: request.serverCertificatePem,
   });
+  verifyPrincipalSignature(user, userAuthenticationPayload(request), request.signature);
   const session = createSession(user.subjectId, server.subjectId);
   const ticketPayload = JSON.stringify({
     sessionId: session.sessionId,
@@ -107,7 +109,6 @@ export function authenticateUserForServer(input: UserAuthenticationInput) {
       encryptedSessionKeyForServer: rsa
         .publicKey(server.publicKeys.exchangePublicKeyPem)
         .encrypt(ticketPayload),
-      expiresAt: session.expiresAt,
     },
   };
 }
@@ -125,7 +126,7 @@ export function closeSession(sessionId: string) {
 
 function decryptUserAuthenticationRequest(encryptedAuthMaterial: string): UserAuthenticationRequest {
   return JSON.parse(
-    rsa.privateKey(ca.privateKeyPem).decryptHybrid(encryptedAuthMaterial),
+    rsa.privateKey(ca.privateKeyPem).decrypt(encryptedAuthMaterial),
   ) as UserAuthenticationRequest;
 }
 
@@ -136,9 +137,42 @@ function createSession(userId: string, serverId: string): SessionRecord {
     serverId,
     sessionKey: random.sessionKey(),
     createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + SESSION_TTL_MS).toISOString(),
   };
 
   sessions.set(session.sessionId, session);
   return session;
+}
+
+function verifyPrincipalSignature(principal: PrincipalRecord, payload: string, signature: string) {
+  const verified = rsa.publicKey(principal.publicKeys.authPublicKeyPem).verify(payload, signature);
+
+  if (!verified) {
+    throw new Error(`${principal.role} authentication signature is invalid`);
+  }
+}
+
+function serverAuthenticationPayload(input: { serverId: string; certificatePem: string; requestId: string }) {
+  return signedPayload.from({
+    certificateHash: hash.of(input.certificatePem).sha256Hex(),
+    requestId: input.requestId,
+    role: "server",
+    serverId: input.serverId,
+  });
+}
+
+function userAuthenticationPayload(input: {
+  userId: string;
+  userCertificatePem: string;
+  serverId: string;
+  serverCertificatePem: string;
+  requestId: string;
+}) {
+  return signedPayload.from({
+    requestId: input.requestId,
+    role: "user",
+    serverCertificateHash: hash.of(input.serverCertificatePem).sha256Hex(),
+    serverId: input.serverId,
+    userCertificateHash: hash.of(input.userCertificatePem).sha256Hex(),
+    userId: input.userId,
+  });
 }

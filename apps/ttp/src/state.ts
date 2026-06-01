@@ -7,7 +7,6 @@ export const sessions = new Map<string, SessionRecord>();
 const logger = createFileLogger("ttp.log");
 
 export const log = logger.log;
-export const readLogs = logger.readLogs;
 
 export function principalKey(role: Role, subjectId: string): string {
   return `${role}:${subjectId}`;

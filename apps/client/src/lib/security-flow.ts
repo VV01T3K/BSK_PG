@@ -1,4 +1,4 @@
-import { aesGcm, hash, random, rsa, type SessionTicket } from "@bsk/crypto";
+import { aesGcm, hash, random, rsa, signedPayload, type SessionTicket } from "@bsk/crypto";
 import { service, ttpProtocol, type UserAuthenticationRequest } from "#/api";
 import { clientSecurityState, type RegisteredUser } from "./client-security-state";
 
@@ -22,6 +22,7 @@ export const securityFlow = {
 
     clientSecurityState.storeUser({
       id: registration.subjectId,
+      authKeyPair,
       exchangeKeyPair,
       certificatePem: registration.certificatePem,
     });
@@ -43,13 +44,11 @@ export const securityFlow = {
     await service.server.acceptSession({
       sessionId: userAuth.sessionId,
       encryptedSessionKeyForServer: userAuth.encryptedSessionKeyForServer,
-      expiresAt: userAuth.expiresAt,
     });
 
     clientSecurityState.storeSession({
       sessionId: userAuth.sessionId,
       userSessionKey: userSession.sessionKey,
-      expiresAt: userAuth.expiresAt,
     });
   },
 
@@ -57,12 +56,11 @@ export const securityFlow = {
     const { sessionId, userSessionKey } = activeSession();
     const user = registeredUser();
     const requestPlaintext = `User ${user.id.slice(0, 12)} requests the protected grade-summary service.`;
-    const encryptedRequest = aesGcm
-      .withKey(userSessionKey)
-      .forSession(sessionId)
-      .encrypt(requestPlaintext);
+    const sessionCipher = aesGcm.withKey(userSessionKey).forSession(sessionId);
+    const encryptedRequest = sessionCipher.encrypt(requestPlaintext);
+    const response = await service.service.exchange({ payload: encryptedRequest });
 
-    await service.service.exchange({ payload: encryptedRequest });
+    return sessionCipher.decrypt(response.payload);
   },
 
   async verifyForgedCertificateIsRejected() {
@@ -112,15 +110,37 @@ function createUserAuthenticationRequest(
   server: RegisteredServer,
   userCertificatePem = user.certificatePem,
 ): UserAuthenticationRequest {
-  return {
+  const request = {
     userId: user.id,
     userCertificatePem,
     serverId: server.serverId,
     serverCertificatePem: server.certificatePem,
     requestId: random.uuid(),
   };
+
+  return {
+    ...request,
+    signature: rsa.privateKey(user.authKeyPair.privateKeyPem).sign(userAuthenticationPayload(request)),
+  };
 }
 
 function decryptSessionTicket(user: RegisteredUser, encryptedTicket: string): SessionTicket {
   return JSON.parse(rsa.privateKey(user.exchangeKeyPair.privateKeyPem).decrypt(encryptedTicket)) as SessionTicket;
+}
+
+function userAuthenticationPayload(input: {
+  userId: string;
+  userCertificatePem: string;
+  serverId: string;
+  serverCertificatePem: string;
+  requestId: string;
+}) {
+  return signedPayload.from({
+    requestId: input.requestId,
+    role: "user",
+    serverCertificateHash: hash.of(input.serverCertificatePem).sha256Hex(),
+    serverId: input.serverId,
+    userCertificateHash: hash.of(input.userCertificatePem).sha256Hex(),
+    userId: input.userId,
+  });
 }

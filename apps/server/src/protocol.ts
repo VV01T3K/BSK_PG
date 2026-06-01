@@ -1,4 +1,4 @@
-import { aesGcm, hash, random, rsa, type SessionTicket } from "@bsk/crypto";
+import { aesGcm, hash, random, rsa, signedPayload, type SessionTicket } from "@bsk/crypto";
 import { createRpcClient } from "@bsk/rpc/client";
 import { readServiceServerStatus, requireRegisteredServer, requireSessionKey, state } from "./state";
 import type { SessionEncryptedPayload } from "./types";
@@ -9,7 +9,6 @@ const ttp = createRpcClient<TtpRouter>(process.env.TTP_API_BASE_URL ?? "http://l
 export type AcceptSessionInput = {
   sessionId: string;
   encryptedSessionKeyForServer: string;
-  expiresAt: string;
 };
 
 export async function registerProtectedServer() {
@@ -27,6 +26,7 @@ export async function registerProtectedServer() {
   });
 
   state.serverId = registration.subjectId;
+  state.authKeyPair = authKeyPair;
   state.exchangeKeyPair = exchangeKeyPair;
   state.certificatePem = registration.certificatePem;
   clearLocalSession();
@@ -37,13 +37,18 @@ export async function registerProtectedServer() {
 
 export async function authenticateProtectedServer(requestId: string = random.uuid()) {
   requireRegisteredServer();
+  const serverId = state.serverId!;
+  const certificatePem = state.certificatePem!;
   const response = await ttp.auth.server({
-    serverId: state.serverId!,
-    certificatePem: state.certificatePem!,
+    serverId,
+    certificatePem,
     requestId,
+    signature: rsa.privateKey(state.authKeyPair!.privateKeyPem).sign(
+      serverAuthenticationPayload({ serverId, certificatePem, requestId }),
+    ),
   });
 
-  return { ...response, certificatePem: state.certificatePem };
+  return { ...response, certificatePem };
 }
 
 export function acceptSessionTicket(input: AcceptSessionInput) {
@@ -76,8 +81,6 @@ export function exchangeProtectedServiceData(payload: SessionEncryptedPayload) {
   state.serviceExchanged = true;
 
   return {
-    plaintextReceived: plaintext,
-    plaintextResponse: responsePlaintext,
     payload: encryptedResponse,
   };
 }
@@ -91,4 +94,13 @@ function decryptSessionTicket(encryptedTicket: string): SessionTicket {
 function clearLocalSession() {
   state.sessionId = undefined;
   state.sessionKey = undefined;
+}
+
+function serverAuthenticationPayload(input: { serverId: string; certificatePem: string; requestId: string }) {
+  return signedPayload.from({
+    certificateHash: hash.of(input.certificatePem).sha256Hex(),
+    requestId: input.requestId,
+    role: "server",
+    serverId: input.serverId,
+  });
 }

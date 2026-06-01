@@ -25,7 +25,7 @@ export const ttpProtocol = {
 
   async authenticateUser(request: UserAuthenticationRequest) {
     return ttp.auth.user({
-      encryptedAuthMaterial: await encryptJsonForTtp(request),
+      encryptedAuthMaterial: await encryptForTtp(JSON.stringify(request)),
     });
   },
 
@@ -40,8 +40,4 @@ async function loadTtpPublicKey() {
 
 async function encryptForTtp(plaintext: string) {
   return (await loadTtpPublicKey()).encrypt(plaintext);
-}
-
-async function encryptJsonForTtp(value: object) {
-  return (await loadTtpPublicKey()).encryptHybrid(JSON.stringify(value));
 }

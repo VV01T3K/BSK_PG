@@ -10,7 +10,7 @@ import {
   type ServerAuthenticationInput,
   type UserAuthenticationInput,
 } from "./protocol";
-import { log, principals, readLogs, sessions } from "./state";
+import { log } from "./state";
 
 function reject(code: "BAD_REQUEST" | "UNAUTHORIZED" | "NOT_FOUND", error: unknown): never {
   const message = error instanceof Error ? error.message : "Unknown TTP error";
@@ -19,20 +19,11 @@ function reject(code: "BAD_REQUEST" | "UNAUTHORIZED" | "NOT_FOUND", error: unkno
 }
 
 export const ttpRouter = {
-  health: os.handler(() => ({
-    ok: true,
-    service: "ttp",
-    registeredPrincipals: principals.size,
-    activeSessions: [...sessions.values()].filter((session) => !session.closedAt).length,
-  })),
-
   publicKey: os.handler(() => ({
     ...ttpPublicKeyResponse(),
-    algorithm: "RSA-OAEP-SHA256",
+    algorithm: "RSA-4096-OAEP-SHA256 + AES-256-GCM",
     keyLength: RSA_BITS,
   })),
-
-  logs: os.handler(() => ({ logs: readLogs() })),
 
   register: os.input(type<RegisterPrincipalInput>()).handler(({ input }) => {
     try {

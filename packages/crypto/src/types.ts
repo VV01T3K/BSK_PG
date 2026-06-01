@@ -10,17 +10,17 @@ export type RsaPair = {
 };
 
 export interface RsaEncryptor {
-  /** RSA-OAEP(SHA-256), returned base64-encoded. */
+  /** Hybrid public-key encryption: RSA-OAEP(SHA-256)-wrapped AES-256-GCM payload. */
   encrypt(plaintext: string): string;
-  /** RSA-wrapped AES-256-GCM session key + ciphertext, returned base64-encoded. */
-  encryptHybrid(plaintext: string): string;
+  /** Verifies a base64 RSA/SHA-256 signature for the given plaintext. */
+  verify(plaintext: string, signatureBase64: string): boolean;
 }
 
 export interface RsaDecryptor {
-  /** Decrypts a base64 RSA-OAEP(SHA-256) payload. */
+  /** Decrypts a base64 hybrid public-key payload. */
   decrypt(payloadBase64: string): string;
-  /** Decrypts a base64 hybrid (RSA-wrapped AES-256-GCM) payload. */
-  decryptHybrid(payloadBase64: string): string;
+  /** Signs the given plaintext with RSA/SHA-256 and returns a base64 signature. */
+  sign(plaintext: string): string;
 }
 
 // ===========================

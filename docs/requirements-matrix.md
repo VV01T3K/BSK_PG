@@ -1,71 +1,70 @@
 # BSK/SCS Project Requirements Matrix
 
-## Normal vs hybrid encryption approach
+## Encryption Approach Decision
 
-We do not need to present two separate approaches.
+The project uses one cryptographic approach: hybrid encryption.
 
-The project should use one main protocol approach: a hybrid cryptographic flow. RSA is used for identity protection, certificate/key handling, and session-ticket delivery. AES-256 is used for the actual client-server service data after the TTP issues the session key.
+RSA-4096 is still present, but only as part of the hybrid mechanism, certificates, digital signatures, and session-key delivery. Public-key protocol payloads are encrypted with an RSA-OAEP-SHA-256 + AES-256-GCM hybrid helper. The final Client-Server service exchange uses the AES-256 session key issued by the TTP.
 
-This matches the task better than a pure RSA/"normal" approach because the task explicitly says that exchanged data after authentication must be encrypted with the session key, and the session key should use AES-256. Pure RSA is also not suitable for larger service payloads. The current code can keep the direct RSA helper for small protocol payloads, but the demo/report should describe the implemented solution as hybrid.
+There is no separate "normal RSA" application mode.
 
 ## Requirement Matrix
 
-| # | Requirement from task | Current status | Evidence in project | Missing / action needed | Extra added beyond requirement |
+| # | Requirement from task | Current status | Evidence in project | Missing / action needed | Added beyond requirement |
 |---|---|---|---|---|---|
-| 1 | Three independent applications: User/Client, Server, TTP. | Done | `apps/client`, `apps/server`, `apps/ttp` | None for code. In presentation, show them as three services. | Shared monorepo packages: `@bsk/crypto`, `@bsk/rpc`. |
-| 2 | User and Server must register/login to TTP before communication. | Done | Client flow registers user and server in `apps/client/src/lib/security-flow.ts`; TTP registration in `apps/ttp/src/protocol.ts`; server registration in `apps/server/src/protocol.ts`. | None. | UI step for registration. |
-| 3 | User and Server generate IDs. | Done | User ID generated in `apps/client/src/lib/security-flow.ts`; server ID generated in `apps/server/src/protocol.ts`. | None. | IDs are randomized per registration. |
-| 4 | Public IDs must be generated using secure hash algorithm. | Done | SHA-256 helper in `packages/crypto/src/crypto.ts`; used for user/server IDs. | None. | Fingerprint helper for UI/status evidence. |
-| 5 | IDs must be encrypted with TTP public key and sent to TTP. | Done | RSA encryption during registration in client/server protocol code; TTP decrypts in `apps/ttp/src/protocol.ts`. | None. | TTP exposes public key endpoint. |
-| 6 | User and Server generate two RSA key pairs and send public keys to TTP. | Done | `authKeyPair` and `exchangeKeyPair` generated in client/server registration flows. | Auth key pair is stored/sent but not heavily used later; explain that exchange key pair protects session tickets. | Separate auth/exchange keys, which is stronger separation than one key pair. |
-| 7 | TTP issues X.509 public key certificates. | Done | Certificate authority and principal cert creation in `packages/crypto/src/certificates.ts`; TTP issues in `apps/ttp/src/certificates.ts` / `apps/ttp/src/protocol.ts`. | None. | CA certificate support and certificate extensions. |
-| 8 | Client can request service from Server. | Done | UI step "Use service" and service call in `apps/client/src/lib/security-flow.ts`; server exchange in `apps/server/src/protocol.ts`. | Current service is a demo protected message, not a rich real service. Acceptable, but report should describe it clearly. | "Protected grade-summary service" example payload. |
-| 9 | Server forwards/starts authentication with TTP. | Mostly done | Client calls server authentication step; server calls TTP in `apps/server/src/protocol.ts`. | In strict sequence-diagram terms, client orchestrates some steps from UI. In report/presentation, explain the server performs its own TTP certificate authentication. | Clear UI step separation. |
-| 10 | TTP validates Server request/certificate. | Done | `authenticateServerCertificate` in `apps/ttp/src/protocol.ts`; certificate checks in `apps/ttp/src/certificates.ts`. | None. | Test coverage for server/user certificate validation path. |
-| 11 | TTP asks/validates User authentication data. | Done | User auth request encrypted to TTP; TTP decrypts and validates in `authenticateUserForServer`. | None. | User auth material uses hybrid RSA+AES because certificate payload is large. |
-| 12 | TTP sends OK to User and Server with session key encrypted with their public keys. | Done | `encryptedSessionKeyForUser` and `encryptedSessionKeyForServer` in `apps/ttp/src/protocol.ts`; client/server decrypt tickets. | None. | Session ticket includes session id and expiry. |
-| 13 | After authentication, User and Server exchange data encrypted using session key. | Done | AES-GCM session encryption in `packages/crypto/src/crypto.ts`; client exchange in `apps/client/src/lib/security-flow.ts`; server decrypts/responds in `apps/server/src/protocol.ts`. | The client currently does not display/decrypt the encrypted server response in the UI; useful improvement before final demo. | AES-GCM auth tag protects against tampering. |
-| 14 | Session closes after service; next request repeats authentication. | Done | Close flow in client, TTP, and server protocol. | UI supports close/reset. Need demonstrate during presentation. | Session expiry timestamp is also tracked. |
-| 15 | Client application should have GUI or be web app. | Done | React/TanStack/Vite client in `apps/client`. | None. | Step-by-step status dashboard. |
-| 16 | RSA algorithm with 4096-bit key must be used. | Done | `RSA_BITS = 4096` in `packages/crypto/src/crypto.ts` and certificate code. | None. | RSA-OAEP with SHA-256 for encryption padding/hash. |
-| 17 | Pseudorandom generator must generate session keys. | Done | `random.sessionKey()` uses forge random bytes in `packages/crypto/src/crypto.ts`. | None. | Tests verify distinct random output and key length. |
-| 18 | AES session key should be 256-bit. | Done | 32-byte key in `packages/crypto/src/crypto.ts`; tests assert 32 bytes. | None. | AES-GCM mode with 128-bit auth tag. |
-| 19 | Status/message icons must present application state. | Done | Lucide icons and completion states in `apps/client/src/routes/index.tsx` and `apps/client/src/components/step-card.tsx`. | Could add connection/log status icons if you want a stronger visual demo. | Separate icons for register, auth, service, forged cert, close/reset. |
-| 20 | Server and TTP must save logs with timestamps. | Done | File logger in `packages/rpc/src/log.ts`; server and TTP log state in `apps/server/src/state.ts`, `apps/ttp/src/state.ts`. | Need demonstrate created `logs/server.log` and `logs/ttp.log` during final presentation. | JSON-line structured logs with actor/level/event/details. |
-| 21 | Only one User is expected. | Done | Client state stores one registered user/session. | None. | Simpler demo flow aligned with requirement. |
-| 22 | Libraries for AES, RSA, SHA may be used. | Done | Uses `node-forge`. | None. | Crypto behavior wrapped in shared internal package. |
-| 23 | Cipher parameters can be constants in each application. | Done | Constants for RSA bits, AES key bytes, GCM IV/tag. | None. | Centralized crypto constants in shared package. |
-| 24 | Any programming language/platform allowed. | Done | TypeScript/Bun/React stack. | None. | Docker Compose demo support. |
-| 25 | At least two VMs must be created, most suitable Server and TTP. | Partial / external | `docker-compose.yml` has separate `server` and `ttp` services plus client. | Real VM requirement still needs presentation setup or teacher acceptance that containers emulate VM-like services. Safer final demo: run Server and TTP in two VMs, or document Docker Compose as local emulation plus prepare VM screenshots. | Docker Compose can start all services quickly. |
-| 26 | Demonstrate correct user-server authentication with TTP. | Done in code | End-to-end UI flow and TTP tests. | Need final presentation script/screenshots. | UI shows four demo steps. |
-| 27 | Demonstrate data transfer between Client and Server. | Done in code | Protected service exchange. | Improve UI evidence by showing request/response ciphertext/plaintext summary. | Tests cover AES round-trip/tamper cases. |
-| 28 | Demonstrate incorrect validation when certificate is forged / MITM resistance. | Done in code | "Forged certificate" UI step; TTP test rejects forged user certificate. | Need show this live during presentation and describe the attack. | Dedicated negative-path test and UI control. |
-| 29 | Report must include brief description of performed tests. | Missing document | Automated tests exist in `packages/crypto/tests` and `apps/ttp/src/index.test.ts`. | Write report section describing auth validation, forged certificate, AES encryption/decryption, network checks. | Test suite already gives material for report. |
-| 30 | Report must include partial code listings with main functions and explanations. | Missing document | Main functions exist in protocol/crypto files. | Add report listings for registration, certificate validation, session key issue, AES service exchange, forged cert rejection. | Code is cleanly separated, easy to quote. |
-| 31 | Full code documentation must be created using Doxygen. | Partial | `Doxyfile` exists and generated output exists in `docs/doxygen-output`. | `Doxyfile` references missing `docs/implementation-roadmap.md`; add missing docs or update `INPUT`. Add more Doxygen comments if teacher expects richer docs. | Doxygen output directory already present. |
-| 32 | Use University GitLab repository with required name pattern. | External / unknown | Local repo exists. | Confirm repo is on `git.pg.edu.pl`, named `[SCS_GN0000_Surname1_Surname2]`, and teacher is Maintainer. | `.gitignore` exists. |
-| 33 | Control meeting: show certificate generation, two identities authentication, basic client/server/TTP. | Ready in code | Existing UI and tests cover this. | Need prepare short demo sequence and make sure GitLab sharing is done. | Docker Compose/local demo simplifies control meeting. |
-| 34 | Final report: description of task, functionality, code listings, Doxygen, bibliography, GitLab. | Missing document | Some raw material exists in README/tests/code. | Write final report and bibliography. | Requirements matrix can be used as report checklist. |
+| 1 | Three independent applications: User/Client, Server, TTP. | Done | `apps/client`, `apps/server`, `apps/ttp` | Present them as three services during demo. | Shared `packages/crypto` and `packages/rpc` keep common code consistent. |
+| 2 | User and Server register/login to TTP before communication. | Done | `registerPrincipals`, `registerProtectedServer`, `registerPrincipal`. | None. | UI exposes this as step 1. |
+| 3 | User and Server generate IDs. | Done | User ID in `apps/client/src/lib/security-flow.ts`; Server ID in `apps/server/src/protocol.ts`. | None. | IDs are randomized before hashing. |
+| 4 | Public IDs generated with secure hash algorithm. | Done | SHA-256 helper in `packages/crypto/src/crypto.ts`. | None. | Certificate fingerprints also use SHA-256 for UI evidence. |
+| 5 | IDs encrypted with TTP public key and sent to TTP. | Done | Registration uses `rsa.publicKey(ttpPublicKeyPem).encrypt(...)`. | None. | Public-key encryption is hybrid for all payload sizes, not plain RSA-only. |
+| 6 | User and Server generate two RSA key pairs and send public keys to TTP. | Done | `authKeyPair` and `exchangeKeyPair` generated for both roles. | None. | Auth key signs authentication claims; exchange key protects certificates/session tickets. |
+| 7 | TTP issues X.509 public key certificates. | Done | `packages/crypto/src/certificates.ts`, `apps/ttp/src/certificates.ts`. | None. | CA certificate, cert extensions, and certificate tests are implemented. |
+| 8 | Client requests service from Server. | Done | "Use service" UI step and `service.service.exchange`. | None. | Demo service uses a protected grade-summary style payload. |
+| 9 | Server authenticates with TTP. | Done | `authenticateProtectedServer` calls `ttp.auth.server`. | In report, explain this step clearly because the UI orchestrates the flow. | Server signs the authentication claim with its auth private key. |
+| 10 | TTP validates Server request/certificate. | Done | `authenticateServerCertificate` validates certificate and signature. | None. | Invalid server signature test exists. |
+| 11 | TTP validates User authentication data. | Done | `authenticateUserForServer` decrypts, validates certificates, and verifies signature. | None. | Invalid user signature test exists. |
+| 12 | TTP sends OK and session key encrypted for User and Server. | Done | `encryptedSessionKeyForUser`, `encryptedSessionKeyForServer`. | None. | Session ticket includes both `sessionId` and `sessionKey`. |
+| 13 | Authenticated Client-Server data exchange encrypted with session key. | Done | AES session encryption in `packages/crypto`; service exchange in `apps/server/src/protocol.ts`. | Demo this live. | Server returns only encrypted response payload; client decrypts locally. |
+| 14 | Session closes after service; next request repeats authentication. | Done | `closeSession` in Client, Server, and TTP flow. | Demo close session after exchange. | Reset is also available as a presentation safety net. |
+| 15 | Client application with GUI or web application. | Done | React/TanStack/Vite client in `apps/client`. | None. | Step cards, current-state panel, and icons are implemented. |
+| 16 | RSA algorithm with 4096-bit key. | Done | `RSA_BITS = 4096` in crypto and certificate generation. | None. | RSA-OAEP-SHA-256 is used for wrapping hybrid keys. |
+| 17 | Pseudorandom generator for session keys. | Done | `random.sessionKey()` uses `node-forge` random bytes. | None. | Randomness is covered by tests. |
+| 18 | AES session key should be 256-bit. | Done | Session key is 32 bytes; tests assert length. | None. | AES-GCM mode adds integrity/authentication tag. |
+| 19 | Status/message icons for application state. | Done | Lucide icons in `apps/client/src/routes/index.tsx` and `StepCard`. | None. | Separate icons for register, authenticate, service, forged cert, close/reset. |
+| 20 | Server and TTP save logs with timestamps. | Done | `packages/rpc/src/log.ts`; Server/TTP call `log(...)`. | During demo, show `logs/server.log` and `logs/ttp.log`. | Logs are JSON-line structured with actor/level/event/details. |
+| 21 | Only one User expected. | Done | Client state stores one current user/session. | None. | Reset can clear the single-user demo state quickly. |
+| 22 | Available AES/RSA/SHA libraries may be used. | Done | Uses `node-forge`. | None. | Library usage is wrapped behind a small local crypto API. |
+| 23 | Cipher parameters can be constants. | Done | RSA/AES/GCM constants in `packages/crypto/src/crypto.ts`. | None. | Centralized constants avoid inconsistent app settings. |
+| 24 | Any programming language/platform allowed. | Done | TypeScript, Bun, React. | None. | Monorepo scripts support test/typecheck/build. |
+| 25 | At least two VMs for Server and TTP. | Done for project scope | Teacher accepted Docker Compose; `docker-compose.yml` runs separate `server` and `ttp` services. | In report/presentation, state Docker Compose is the accepted VM-like environment. | Docker Compose also runs Client for one-command demo startup. |
+| 26 | Demonstrate correct User-Server authentication with TTP. | Done in code | UI flow and TTP tests cover registration/auth/session issue. | Prepare presentation sequence. | Automated tests verify session-key distribution. |
+| 27 | Demonstrate Client-Server data transfer. | Done in code | Protected service exchange sends encrypted request and encrypted response. | Prepare presentation sequence. | AES tamper/session mismatch tests exist in crypto package. |
+| 28 | Demonstrate incorrect validation for forged certificate / MITM resistance. | Done in code | Forged certificate UI step; TTP negative test. | Show live during presentation. | Also rejects invalid auth signatures. |
+| 29 | Report includes brief description of performed tests. | Missing report | Tests exist in `packages/crypto/tests` and `apps/ttp/src/index.test.ts`. | Write report test section. | Test suite gives ready material for report. |
+| 30 | Report includes partial code listings and explanations. | Missing report | Main functions are separated in crypto/protocol modules. | Write report listings section. | Good listing candidates are already isolated. |
+| 31 | Full code documentation with Doxygen. | Partial / pending | `Doxyfile` exists. | Generate/review Doxygen later. | Doxygen config is already present. |
+| 32 | University GitLab repo with correct naming and teacher Maintainer access. | External / needs confirmation | Local Git repo exists. | Confirm remote name, push, and teacher access on `git.pg.edu.pl`. | `.gitignore` avoids logs/build output. |
+| 33 | Control meeting: certificate generation, two identities authentication, basic Client/Server/TTP. | Ready in code | UI and tests cover basic flow. | Prepare short demo script. | Reset helps recover during live demo. |
+| 34 | Final report: task, functionality, listings, Doxygen, bibliography, GitLab. | Missing report | Codebase has implementation material. | Write report and bibliography. | Requirements matrix can be used as report checklist. |
 
-## Current Added Features Beyond The Minimum
+## Additional Things Currently Added
 
-| Added item | Why it helps |
-|---|---|
-| React web GUI with step cards and icons | Makes presentation flow clearer than a command-line-only client. |
-| Docker Compose with separate client/server/TTP services | Gives a repeatable demo environment. |
-| Shared crypto package | Keeps RSA/AES/SHA implementation consistent across apps. |
-| Shared RPC/logging package | Reduces duplicated transport/log code. |
-| AES-GCM instead of plain AES mode | Adds integrity/authentication tag for encrypted service data. |
-| RSA-OAEP with SHA-256 | Stronger padding choice than raw/textbook RSA. |
-| Session IDs and expiry timestamps | Makes session handling more realistic. |
-| Close/reset flow | Lets the demo repeat the authentication process cleanly. |
-| Automated crypto and TTP tests | Supports the report's testing section. |
-| Forged certificate negative test in UI and test suite | Directly supports the 6-point MITM/forgery demonstration requirement. |
+| Added item | Why it exists | Keep? |
+|---|---|---|
+| Hybrid-only public encryption API | Avoids presenting two approaches; handles large PEM/certificate payloads safely. | Keep. |
+| RSA/SHA-256 signatures using `authKeyPair` | Makes the required second RSA key pair meaningful in authentication. | Keep. |
+| AES-GCM instead of a simpler AES mode | Adds integrity protection for encrypted service data. | Keep. |
+| Encrypted Server response only | Avoids leaking plaintext in the RPC response. | Keep. |
+| Reset button / Server reset endpoint | Presentation safety net if the flow gets stuck. | Keep for demo, explain it is not part of the security protocol. |
+| Docker Compose environment | Teacher accepted it as VM-like environment. | Keep. |
+| Automated tests | Supports report testing section and reduces demo risk. | Keep. |
+| Shared crypto/RPC packages | Reduces duplicated code across Client, Server, and TTP. | Keep. |
+| JSON-line structured logs | Meets timestamped log requirement cleanly. | Keep. |
+| Doxygen config | Needed for documentation requirement. | Keep, finish later. |
 
-## Main Things Still Missing
+## Missing Summary
 
-1. Confirm/run the Server and TTP in two actual VMs, or get acceptance for Docker Compose as the emulated environment.
-2. Write the final report with test descriptions, code listings, and bibliography.
-3. Make sure University GitLab repository naming/sharing requirements are satisfied.
-4. Clean up Doxygen inputs: either add `docs/implementation-roadmap.md` or remove it from `Doxyfile`.
-5. Consider improving the UI to show encrypted service response evidence, not only "exchange complete".
+1. Final report: task description, tests, code listings, bibliography.
+2. Doxygen generation/review.
+3. University GitLab confirmation: correct repository name, pushed code, teacher as Maintainer.
+4. Presentation script: normal flow, encrypted exchange, forged certificate rejection, logs, Docker Compose environment.

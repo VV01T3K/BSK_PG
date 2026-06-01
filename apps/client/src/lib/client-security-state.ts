@@ -2,6 +2,7 @@ import { hash, type RsaPair } from "@bsk/crypto";
 
 export type RegisteredUser = {
   id: string;
+  authKeyPair: RsaPair;
   exchangeKeyPair: RsaPair;
   certificatePem: string;
 };
@@ -9,7 +10,6 @@ export type RegisteredUser = {
 export type ActiveSession = {
   sessionId: string;
   userSessionKey: string;
-  expiresAt: string;
 };
 
 const current: {
@@ -48,7 +48,6 @@ export const clientSecurityState = {
       userId: user?.id,
       userCertificateFingerprint: user ? hash.of(user.certificatePem).fingerprint() : undefined,
       sessionId: session?.sessionId,
-      sessionExpiresAt: session?.expiresAt,
     };
   },
 };

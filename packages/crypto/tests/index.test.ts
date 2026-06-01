@@ -91,24 +91,31 @@ describe("rsa", () => {
     expect(pair.privateKeyPem).toContain("PRIVATE KEY");
   });
 
-  it("encrypt() -> decrypt() round-trips with base64 ciphertext", () => {
+  it("encrypt() -> decrypt() round-trips a hybrid public-key payload", () => {
     const ciphertext = rsa.publicKey(pair.publicKeyPem).encrypt("secret id");
     expect(ciphertext).toMatch(/^[A-Za-z0-9+/]+=*$/);
     expect(rsa.privateKey(pair.privateKeyPem).decrypt(ciphertext)).toBe("secret id");
   });
 
-  it("encryptHybrid() -> decryptHybrid() round-trips a payload larger than the RSA modulus", () => {
+  it("encrypt() -> decrypt() round-trips a payload larger than the RSA modulus", () => {
     const big = "x".repeat(4000);
-    const ciphertext = rsa.publicKey(pair.publicKeyPem).encryptHybrid(big);
-    expect(rsa.privateKey(pair.privateKeyPem).decryptHybrid(ciphertext)).toBe(big);
-  });
-
-  it("plain encrypt() rejects a payload larger than the RSA modulus", () => {
-    expect(() => rsa.publicKey(pair.publicKeyPem).encrypt("x".repeat(4000))).toThrow();
+    const ciphertext = rsa.publicKey(pair.publicKeyPem).encrypt(big);
+    expect(rsa.privateKey(pair.privateKeyPem).decrypt(ciphertext)).toBe(big);
   });
 
   it("decrypting with a non-matching private key throws", () => {
     const ciphertext = rsa.publicKey(pair.publicKeyPem).encrypt("secret id");
     expect(() => rsa.privateKey(otherPair.privateKeyPem).decrypt(ciphertext)).toThrow();
+  });
+
+  it("sign() -> verify() validates a SHA-256 signature", () => {
+    const signature = rsa.privateKey(pair.privateKeyPem).sign("authentication claim");
+    expect(rsa.publicKey(pair.publicKeyPem).verify("authentication claim", signature)).toBe(true);
+  });
+
+  it("verify() rejects signatures for changed payloads or keys", () => {
+    const signature = rsa.privateKey(pair.privateKeyPem).sign("authentication claim");
+    expect(rsa.publicKey(pair.publicKeyPem).verify("changed claim", signature)).toBe(false);
+    expect(rsa.publicKey(otherPair.publicKeyPem).verify("authentication claim", signature)).toBe(false);
   });
 });

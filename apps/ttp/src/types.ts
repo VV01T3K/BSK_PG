@@ -17,6 +17,5 @@ export interface SessionRecord {
   serverId: string;
   sessionKey: string;
   createdAt: string;
-  expiresAt: string;
   closedAt?: string;
 }

@@ -1,4 +1,4 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join } from "node:path";
 
@@ -33,22 +33,11 @@ export function createFileLogger(filePath: string) {
     appendFileSync(resolvedPath, `${JSON.stringify(entry)}\n`);
   }
 
-  function readLogs(limit = 80): EventLogEntry[] {
-    if (!existsSync(resolvedPath)) {
-      return [];
-    }
-    const lines = readFileSync(resolvedPath, "utf8").split("\n").filter(Boolean);
-    return lines
-      .slice(-limit)
-      .reverse()
-      .map((line) => JSON.parse(line) as EventLogEntry);
-  }
-
   function reset() {
     if (existsSync(resolvedPath)) {
       writeFileSync(resolvedPath, "");
     }
   }
 
-  return { log, readLogs, reset };
+  return { log, reset };
 }

@@ -4,6 +4,7 @@ import type { ServiceServerStatus } from "./types";
 
 type ServiceServerState = {
   serverId?: string;
+  authKeyPair?: RsaPair;
   exchangeKeyPair?: RsaPair;
   certificatePem?: string;
   sessionId?: string;
@@ -14,8 +15,6 @@ type ServiceServerState = {
 export const state: ServiceServerState = {};
 
 const logger = createFileLogger("server.log");
-
-export const readLogs = logger.readLogs;
 
 export function log(event: string, details: string, level: EventLogEntry["level"] = "info") {
   logger.log("server", event, details, level);
@@ -39,7 +38,7 @@ export function readServiceServerStatus(): ServiceServerStatus {
 }
 
 export function requireRegisteredServer() {
-  if (!state.serverId || !state.certificatePem || !state.exchangeKeyPair) {
+  if (!state.serverId || !state.certificatePem || !state.authKeyPair || !state.exchangeKeyPair) {
     throw new Error("service server is not registered with TTP");
   }
 }

@@ -1,5 +1,5 @@
 import { ORPCError, os, type } from "@orpc/server";
-import { log, readLogs, readServiceServerStatus, requireRegisteredServer, resetServiceServerStateForTests, state } from "./state";
+import { log, readServiceServerStatus, requireRegisteredServer, resetServiceServerStateForTests, state } from "./state";
 import {
   acceptSessionTicket,
   authenticateProtectedServer,
@@ -17,16 +17,7 @@ function reject(code: "BAD_REQUEST" | "UNAUTHORIZED", error: unknown): never {
 }
 
 export const serviceRouter = {
-  health: os.handler(() => ({
-    ok: true,
-    service: "server",
-    registered: Boolean(state.serverId),
-    sessionEstablished: Boolean(state.sessionId),
-  })),
-
   state: os.handler(() => readServiceServerStatus()),
-
-  logs: os.handler(() => ({ logs: readLogs() })),
 
   reset: os.handler(() => {
     resetServiceServerStateForTests();
