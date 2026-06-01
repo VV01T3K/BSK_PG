@@ -52,8 +52,7 @@ Services:
 
 ## Documentation
 
-- Roadmap: `docs/implementation-roadmap.md`
-- Report skeleton: `docs/final-report-skeleton.md`
+- Requirements matrix: `docs/requirements-matrix.md`
 - Doxygen config: `Doxyfile`
 
 Generate Doxygen output with:
