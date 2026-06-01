@@ -1,11 +1,5 @@
 import { ORPCError, os, type } from "@orpc/server";
-import {
-  log,
-  readServiceServerStatus,
-  requireRegisteredServer,
-  resetServiceServerStateForTests,
-  state,
-} from "./state";
+
 import {
   acceptSessionTicket,
   authenticateProtectedServer,
@@ -14,6 +8,13 @@ import {
   registerProtectedServer,
   type AcceptSessionInput,
 } from "./protocol";
+import {
+  log,
+  readServiceServerStatus,
+  requireRegisteredServer,
+  resetServiceServerStateForTests,
+  state,
+} from "./state";
 import type { SessionEncryptedPayload, ServiceServerStatus } from "./types";
 
 function reject(code: "BAD_REQUEST" | "UNAUTHORIZED", error: unknown): never {

@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
 import { serviceQuery } from "#/api";
-import { securityFlow } from "./security-flow";
+
 import { clientSecurityState } from "./client-security-state";
+import { securityFlow } from "./security-flow";
 
 const CLIENT_STATUS_KEY = ["client-status"] as const;
 

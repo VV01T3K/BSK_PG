@@ -1,5 +1,6 @@
 import { type RsaPair } from "@bsk/crypto";
 import { createSecurityLogger, type SecurityLogLevel } from "@bsk/rpc/log";
+
 import type { ServiceServerStatus } from "./types";
 
 type ServiceServerState = {

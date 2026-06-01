@@ -1,10 +1,21 @@
 {
   "compilerOptions": {
-    "noEmit": true,
-    "module": "esnext",
+    "target": "ESNext",
+    "lib": ["ESNext"],
+    "module": "ESNext",
     "moduleResolution": "bundler",
+    "moduleDetection": "force",
     "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "isolatedModules": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
   }
 }

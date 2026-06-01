@@ -1,5 +1,7 @@
-import forge from "node-forge";
 import { beforeAll, describe, expect, it } from "bun:test";
+
+import forge from "node-forge";
+
 import {
   type CertificateAuthority,
   createCertificateAuthority,

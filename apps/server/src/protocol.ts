@@ -1,5 +1,7 @@
 import { aesGcm, hash, random, rsa, signedPayload, type SessionTicket } from "@bsk/crypto";
 import { createRpcClient } from "@bsk/rpc/client";
+import type { TtpRouter } from "ttp";
+
 import {
   readServiceServerStatus,
   requireRegisteredServer,
@@ -7,7 +9,6 @@ import {
   state,
 } from "./state";
 import type { SessionEncryptedPayload } from "./types";
-import type { TtpRouter } from "ttp";
 
 const ttp = createRpcClient<TtpRouter>(process.env.TTP_API_BASE_URL ?? "http://localhost:3001");
 

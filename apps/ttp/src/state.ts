@@ -1,4 +1,5 @@
 import { createSecurityLogger } from "@bsk/rpc/log";
+
 import type { PrincipalRecord, Role, SessionRecord } from "./types";
 
 export const principals = new Map<string, PrincipalRecord>();

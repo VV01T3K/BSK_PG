@@ -1,6 +1,7 @@
 import { truncateSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
 import pino from "pino";
 import pretty from "pino-pretty";
 

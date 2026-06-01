@@ -1,3 +1,4 @@
+import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 import {
   HeadContent,
   Link,
@@ -7,8 +8,6 @@ import {
 } from "@tanstack/react-router";
 
 import appCss from "#/styles.css?url";
-
-import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 
 interface MyRouterContext {
   queryClient: QueryClient;
