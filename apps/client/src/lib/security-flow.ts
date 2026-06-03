@@ -10,7 +10,6 @@ type RegisteredServer = Awaited<ReturnType<typeof service.state>> & {
   certificatePem: string;
 };
 
-/** Browser-side protocol steps. React components use these through useSecurityFlow(). */
 export const securityFlow = {
   async resetEnvironment() {
     clientSecurityState.reset();

@@ -10,6 +10,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "bun test --pass-with-no-tests",
+    "test:e2e": "playwright test",
+    "test:e2e:report": "playwright show-report",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -32,6 +34,7 @@
     "ttp": "workspace:*"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@rolldown/plugin-babel": "^0.2.3",
     "@tailwindcss/typography": "^0.5.16",
     "@types/bun": "latest",

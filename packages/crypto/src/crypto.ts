@@ -125,8 +125,6 @@ export const aesGcm = {
       encrypt,
       decrypt,
       forSession(sessionId: string) {
-        // The session id is bound as AES-GCM associated data (AAD), so it is covered by the
-        // authentication tag: a payload re-used under a different session fails to decrypt.
         return {
           encrypt(plaintext: string): SessionEncryptedPayload {
             return { sessionId, ...encrypt(plaintext, sessionId) };

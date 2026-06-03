@@ -7,7 +7,6 @@ import { securityFlow } from "./security-flow";
 
 const CLIENT_STATUS_KEY = ["client-status"] as const;
 
-/** React adapter for the security flow page: queries current state and exposes protocol steps as mutations. */
 export function useSecurityFlow() {
   const queryClient = useQueryClient();
   const serverQuery = useQuery(serviceQuery.state.queryOptions());
