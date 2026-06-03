@@ -1,4 +1,5 @@
-import { aesGcm, hash, random, rsa, signedPayload, type SessionTicket } from "@bsk/crypto";
+import { aesGcm, hash, random, rsa, type SessionTicket } from "@bsk/crypto";
+import { userAuthenticationPayload } from "ttp/contract";
 
 import { service, ttpProtocol, type UserAuthenticationRequest } from "#/api";
 
@@ -152,21 +153,4 @@ function decryptSessionTicket(user: RegisteredUser, encryptedTicket: string): Se
   return JSON.parse(
     rsa.privateKey(user.exchangeKeyPair.privateKeyPem).decrypt(encryptedTicket),
   ) as SessionTicket;
-}
-
-function userAuthenticationPayload(input: {
-  userId: string;
-  userCertificatePem: string;
-  serverId: string;
-  serverCertificatePem: string;
-  requestId: string;
-}) {
-  return signedPayload.from({
-    requestId: input.requestId,
-    role: "user",
-    serverCertificateHash: hash.of(input.serverCertificatePem).sha256Hex(),
-    serverId: input.serverId,
-    userCertificateHash: hash.of(input.userCertificatePem).sha256Hex(),
-    userId: input.userId,
-  });
 }

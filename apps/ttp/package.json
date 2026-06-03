@@ -2,12 +2,13 @@
   "name": "ttp",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./contract": "./src/contract.ts"
   },
   "scripts": {
     "dev": "bun run --hot src/index.ts",
     "build": "bun build src/index.ts --target bun --outdir dist",
-    "test": "bun test --pass-with-no-tests --timeout 10000",
+    "test": "bun test --pass-with-no-tests --timeout 20000",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

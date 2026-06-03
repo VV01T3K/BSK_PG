@@ -1,3 +1,4 @@
+import type { SessionEncryptedPayload } from "@bsk/crypto";
 import { ORPCError, os, type } from "@orpc/server";
 
 import {
@@ -7,8 +8,8 @@ import {
   registerProtectedServer,
   requestService,
 } from "./protocol";
-import { log, readServiceServerStatus, resetServiceServerStateForTests, state } from "./state";
-import type { SessionEncryptedPayload, ServiceServerStatus } from "./types";
+import { log, readServiceServerStatus, resetServiceServerState, state } from "./state";
+import type { ServiceServerStatus } from "./state";
 
 function reject(code: "BAD_REQUEST" | "UNAUTHORIZED", error: unknown): never {
   const message = error instanceof Error ? error.message : "Unknown service server error";
@@ -30,7 +31,7 @@ export const serviceRouter = {
   }),
 
   reset: os.handler(() => {
-    resetServiceServerStateForTests();
+    resetServiceServerState();
     log("server reset", "cleared protected service server state");
     return readServiceServerStatus();
   }),

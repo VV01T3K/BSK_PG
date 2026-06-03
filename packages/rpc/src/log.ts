@@ -1,5 +1,4 @@
 import { truncateSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import pino from "pino";
@@ -11,7 +10,7 @@ export type SecurityLogLevel = "info" | "warn" | "error";
 const DEFAULT_LOG_DIR = "../../logs";
 
 function logDirectory() {
-  return process.env.LOG_DIR ?? (process.env.NODE_ENV === "test" ? tmpdir() : DEFAULT_LOG_DIR);
+  return process.env.LOG_DIR ?? DEFAULT_LOG_DIR;
 }
 
 function logPath(fileName: string) {
@@ -19,7 +18,6 @@ function logPath(fileName: string) {
 }
 
 export function createSecurityLogger(fileNames: readonly string[]) {
-  const sync = process.env.NODE_ENV === "test";
   const paths = fileNames.map(logPath);
   const logger = pino(
     { base: undefined },
@@ -32,7 +30,6 @@ export function createSecurityLogger(fileNames: readonly string[]) {
           messageFormat: "{actor}: {msg} - {details}",
           mkdir: true,
           singleLine: true,
-          sync,
           translateTime: "SYS:yyyy-mm-dd HH:MM:ss.l",
         }),
       ),

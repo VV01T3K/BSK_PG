@@ -1,6 +1,13 @@
 import { RSA_BITS } from "@bsk/crypto";
 import { ORPCError, os, type } from "@orpc/server";
 
+import type {
+  RegisterPrincipalInput,
+  ServerAuthenticationInput,
+  ServerSessionKeyInput,
+  UserAuthenticationInput,
+  UserAuthRedirectInput,
+} from "./contract";
 import {
   authenticateServerCertificate,
   authenticateUserForServer,
@@ -9,11 +16,6 @@ import {
   requestUserAuthentication,
   serverSessionKey,
   ttpPublicKeyResponse,
-  type RegisterPrincipalInput,
-  type ServerAuthenticationInput,
-  type ServerSessionKeyInput,
-  type UserAuthenticationInput,
-  type UserAuthRedirectInput,
 } from "./protocol";
 import { log } from "./state";
 
@@ -54,7 +56,11 @@ export const ttpRouter = {
     redirect: os.input(type<UserAuthRedirectInput>()).handler(({ input }) => {
       try {
         const response = requestUserAuthentication(input);
-        log("ttp", "user authentication requested", `redirect to user for request ${input.requestId}`);
+        log(
+          "ttp",
+          "user authentication requested",
+          `redirect to user for request ${input.requestId}`,
+        );
         return response;
       } catch (error) {
         reject("UNAUTHORIZED", error);

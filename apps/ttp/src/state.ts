@@ -1,6 +1,13 @@
+import { createCertificateAuthority } from "@bsk/crypto";
 import { createSecurityLogger } from "@bsk/rpc/log";
 
-import type { PendingAuthRecord, PrincipalRecord, Role, SessionRecord } from "./types";
+import type { Role } from "./contract";
+import type { PendingAuthRecord, PrincipalRecord, SessionRecord } from "./types";
+
+export const ca = createCertificateAuthority({
+  commonName: "BSK PG Trusted Third Party",
+  organization: "BSK PG Demo",
+});
 
 export const principals = new Map<string, PrincipalRecord>();
 export const sessions = new Map<string, SessionRecord>();
@@ -13,12 +20,4 @@ export const log = logger.log;
 
 export function principalKey(role: Role, subjectId: string): string {
   return `${role}:${subjectId}`;
-}
-
-export function resetTtpStateForTests() {
-  principals.clear();
-  sessions.clear();
-  sessionsByRequest.clear();
-  pendingAuths.clear();
-  logger.reset();
 }

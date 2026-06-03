@@ -1,8 +1,6 @@
 import { type RsaPair } from "@bsk/crypto";
 import { createSecurityLogger, type SecurityLogLevel } from "@bsk/rpc/log";
 
-import type { ServiceServerStatus } from "./types";
-
 type ServiceServerState = {
   serverId?: string;
   authKeyPair?: RsaPair;
@@ -14,6 +12,14 @@ type ServiceServerState = {
   pendingRequests: Map<string, { userId: string; createdAt: string }>;
 };
 
+export interface ServiceServerStatus {
+  registered: boolean;
+  serverId?: string;
+  certificatePem?: string;
+  sessionEstablished: boolean;
+  serviceExchanged: boolean;
+}
+
 export const state: ServiceServerState = {
   pendingRequests: new Map(),
 };
@@ -24,7 +30,7 @@ export function log(event: string, details: string, level: SecurityLogLevel = "i
   logger.log("server", event, details, level);
 }
 
-export function resetServiceServerStateForTests() {
+export function resetServiceServerState() {
   state.pendingRequests.clear();
   for (const key of Object.keys(state) as Array<keyof ServiceServerState>) {
     if (key === "pendingRequests") continue;

@@ -7,7 +7,7 @@ export type RegisteredUser = {
   certificatePem: string;
 };
 
-export type ActiveSession = {
+type ActiveSession = {
   sessionId: string;
   userSessionKey: string;
 };

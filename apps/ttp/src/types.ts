@@ -1,12 +1,9 @@
-export type Role = "user" | "server";
+import type { PrincipalPublicKeys, Role } from "./contract";
 
 export interface PrincipalRecord {
   role: Role;
   subjectId: string;
-  publicKeys: {
-    authPublicKeyPem: string;
-    exchangePublicKeyPem: string;
-  };
+  publicKeys: PrincipalPublicKeys;
   certificatePem: string;
   issuedAt: string;
 }

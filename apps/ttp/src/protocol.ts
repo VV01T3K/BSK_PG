@@ -1,46 +1,17 @@
-import { hash, random, rsa, signedPayload, type SessionTicket } from "@bsk/crypto";
+import { issuePrincipalCertificate, random, rsa, type SessionTicket } from "@bsk/crypto";
 
-import { issueCertificate, validateCertificate } from "./certificates";
-import { ca } from "./crypto";
-import { pendingAuths, principalKey, principals, sessions, sessionsByRequest } from "./state";
-import type { PrincipalRecord, Role, SessionRecord } from "./types";
-
-export type PrincipalPublicKeys = PrincipalRecord["publicKeys"];
-
-export type RegisterPrincipalInput = {
-  role: Role;
-  encryptedId: string;
-  publicKeys: PrincipalPublicKeys;
-};
-
-export type ServerAuthenticationInput = {
-  serverId: string;
-  certificatePem: string;
-  requestId: string;
-  userId: string;
-  signature: string;
-};
-
-export type UserAuthenticationRequest = {
-  userId: string;
-  userCertificatePem: string;
-  serverId: string;
-  serverCertificatePem: string;
-  requestId: string;
-  signature: string;
-};
-
-export type UserAuthenticationInput = {
-  encryptedAuthMaterial: string;
-};
-
-export type ServerSessionKeyInput = {
-  requestId: string;
-};
-
-export type UserAuthRedirectInput = {
-  requestId: string;
-};
+import {
+  serverAuthenticationPayload,
+  userAuthenticationPayload,
+  type RegisterPrincipalInput,
+  type ServerAuthenticationInput,
+  type ServerSessionKeyInput,
+  type UserAuthenticationInput,
+  type UserAuthenticationRequest,
+  type UserAuthRedirectInput,
+} from "./contract";
+import { ca, pendingAuths, principalKey, principals, sessions, sessionsByRequest } from "./state";
+import type { PrincipalRecord, SessionRecord } from "./types";
 
 export function ttpPublicKeyResponse() {
   return {
@@ -231,34 +202,29 @@ function verifyPrincipalSignature(principal: PrincipalRecord, payload: string, s
   }
 }
 
-function serverAuthenticationPayload(input: {
-  serverId: string;
+type CertifiablePrincipal = Pick<PrincipalRecord, "role" | "subjectId" | "publicKeys">;
+
+type CertificateClaim = Pick<PrincipalRecord, "role" | "subjectId"> & {
   certificatePem: string;
-  requestId: string;
-  userId: string;
-}) {
-  return signedPayload.from({
-    certificateHash: hash.of(input.certificatePem).sha256Hex(),
-    requestId: input.requestId,
-    role: "server",
-    serverId: input.serverId,
-    userId: input.userId,
+};
+
+const compactPem = (pem: string) => pem.replace(/\s+/g, "");
+
+function issueCertificate(principal: CertifiablePrincipal): string {
+  return issuePrincipalCertificate({
+    authority: ca,
+    role: principal.role,
+    subjectId: principal.subjectId,
+    publicKeyPem: principal.publicKeys.exchangePublicKeyPem,
   });
 }
 
-function userAuthenticationPayload(input: {
-  userId: string;
-  userCertificatePem: string;
-  serverId: string;
-  serverCertificatePem: string;
-  requestId: string;
-}) {
-  return signedPayload.from({
-    requestId: input.requestId,
-    role: "user",
-    serverCertificateHash: hash.of(input.serverCertificatePem).sha256Hex(),
-    serverId: input.serverId,
-    userCertificateHash: hash.of(input.userCertificatePem).sha256Hex(),
-    userId: input.userId,
-  });
+function validateCertificate(claim: CertificateClaim): PrincipalRecord {
+  const record = principals.get(principalKey(claim.role, claim.subjectId));
+
+  if (!record || compactPem(record.certificatePem) !== compactPem(claim.certificatePem)) {
+    throw new Error(`${claim.role} certificate does not match the one issued by TTP`);
+  }
+
+  return record;
 }

@@ -1,6 +1,14 @@
-import { aesGcm, hash, random, rsa, signedPayload, type SessionTicket } from "@bsk/crypto";
+import {
+  aesGcm,
+  hash,
+  random,
+  rsa,
+  type SessionEncryptedPayload,
+  type SessionTicket,
+} from "@bsk/crypto";
 import { createRpcClient } from "@bsk/rpc/client";
 import type { TtpRouter } from "ttp";
+import { serverAuthenticationPayload } from "ttp/contract";
 
 import {
   readServiceServerStatus,
@@ -8,7 +16,6 @@ import {
   requireSessionKey,
   state,
 } from "./state";
-import type { SessionEncryptedPayload } from "./types";
 
 const ttpBaseUrl = process.env.TTP_API_BASE_URL ?? "http://localhost:3001";
 const ttp = createRpcClient<TtpRouter>(ttpBaseUrl);
@@ -122,19 +129,4 @@ function decryptSessionTicket(encryptedTicket: string): SessionTicket {
 function clearLocalSession() {
   state.sessionId = undefined;
   state.sessionKey = undefined;
-}
-
-function serverAuthenticationPayload(input: {
-  serverId: string;
-  certificatePem: string;
-  requestId: string;
-  userId: string;
-}) {
-  return signedPayload.from({
-    certificateHash: hash.of(input.certificatePem).sha256Hex(),
-    requestId: input.requestId,
-    role: "server",
-    serverId: input.serverId,
-    userId: input.userId,
-  });
 }
