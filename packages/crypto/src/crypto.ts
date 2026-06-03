@@ -44,6 +44,13 @@ function decodeHybridPayload(payloadBytes: string): HybridEncryptedPayload {
   return JSON.parse(forge.util.decodeUtf8(payloadBytes)) as HybridEncryptedPayload;
 }
 
+function derToPem(label: "PUBLIC KEY" | "PRIVATE KEY", der: ArrayBuffer): string {
+  return forge.pem.encode({
+    type: label,
+    body: forge.util.binary.raw.encode(new Uint8Array(der)),
+  });
+}
+
 export const hash = {
   of(value: string) {
     const sha256Hex = () => {
@@ -143,11 +150,25 @@ export const aesGcm = {
 };
 
 export const rsa = {
-  generatePair(): RsaPair {
-    const pair = forge.pki.rsa.generateKeyPair({ bits: RSA_BITS, workers: -1 });
+  async generatePair(): Promise<RsaPair> {
+    const pair = await crypto.subtle.generateKey(
+      {
+        name: "RSASSA-PKCS1-v1_5",
+        modulusLength: RSA_BITS,
+        publicExponent: new Uint8Array([1, 0, 1]),
+        hash: "SHA-256",
+      },
+      true,
+      ["sign", "verify"],
+    );
+    const [publicKeyDer, privateKeyDer] = await Promise.all([
+      crypto.subtle.exportKey("spki", pair.publicKey),
+      crypto.subtle.exportKey("pkcs8", pair.privateKey),
+    ]);
+
     return {
-      publicKeyPem: forge.pki.publicKeyToPem(pair.publicKey),
-      privateKeyPem: forge.pki.privateKeyToPem(pair.privateKey),
+      publicKeyPem: derToPem("PUBLIC KEY", publicKeyDer),
+      privateKeyPem: derToPem("PRIVATE KEY", privateKeyDer),
     };
   },
 

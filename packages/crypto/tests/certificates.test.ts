@@ -15,9 +15,9 @@ describe("certificates", () => {
   let ca: CertificateAuthority;
   let principalPublicKeyPem: string;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     ca = createCertificateAuthority({ commonName: "BSK PG Test CA", organization: "BSK PG" });
-    principalPublicKeyPem = rsa.generatePair().publicKeyPem;
+    principalPublicKeyPem = (await rsa.generatePair()).publicKeyPem;
   }, 60_000);
 
   it("returns parseable PEM-encoded keys and certificate", () => {

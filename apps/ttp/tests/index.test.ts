@@ -27,8 +27,7 @@ async function ttpPublicKey(): Promise<string> {
 async function registerPrincipal(role: Role): Promise<PrincipalFixture> {
   const publicKeyPem = await ttpPublicKey();
   const id = hash.of(`${role}-test-id-${random.uuid()}`).sha256Hex();
-  const auth = rsa.generatePair();
-  const exchange = rsa.generatePair();
+  const [auth, exchange] = await Promise.all([rsa.generatePair(), rsa.generatePair()]);
   const payload = await ttp.register({
     role,
     encryptedId: rsa.publicKey(publicKeyPem).encrypt(id),

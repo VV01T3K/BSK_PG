@@ -17,21 +17,7 @@ export const securityFlow = {
   },
 
   async registerPrincipals() {
-    const id = hash.of(`user-${random.hex(16)}`).sha256Hex();
-    const authKeyPair = rsa.generatePair();
-    const exchangeKeyPair = rsa.generatePair();
-    const registration = await ttpProtocol.registerUser(id, {
-      authPublicKeyPem: authKeyPair.publicKeyPem,
-      exchangePublicKeyPem: exchangeKeyPair.publicKeyPem,
-    });
-
-    clientSecurityState.storeUser({
-      id: registration.subjectId,
-      authKeyPair,
-      exchangeKeyPair,
-      certificatePem: registration.certificatePem,
-    });
-    await service.server.register();
+    await Promise.all([registerUserPrincipal(), service.server.register()]);
   },
 
   async authenticateSession() {
@@ -103,6 +89,25 @@ export const securityFlow = {
     clientSecurityState.clearSession();
   },
 };
+
+async function registerUserPrincipal() {
+  const id = hash.of(`user-${random.hex(16)}`).sha256Hex();
+  const [authKeyPair, exchangeKeyPair] = await Promise.all([
+    rsa.generatePair(),
+    rsa.generatePair(),
+  ]);
+  const registration = await ttpProtocol.registerUser(id, {
+    authPublicKeyPem: authKeyPair.publicKeyPem,
+    exchangePublicKeyPem: exchangeKeyPair.publicKeyPem,
+  });
+
+  clientSecurityState.storeUser({
+    id: registration.subjectId,
+    authKeyPair,
+    exchangeKeyPair,
+    certificatePem: registration.certificatePem,
+  });
+}
 
 function registeredUser() {
   const { user } = clientSecurityState.read();

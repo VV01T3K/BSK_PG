@@ -21,13 +21,15 @@ const ttpBaseUrl = process.env.TTP_API_BASE_URL ?? "http://localhost:3001";
 const ttp = createRpcClient<TtpRouter>(ttpBaseUrl);
 
 export async function registerProtectedServer() {
-  const ttpPublicKeyPem = (await ttp.publicKey()).publicKeyPem;
   const serverId = hash.of(`server-${random.uuid()}`).sha256Hex();
-  const authKeyPair = rsa.generatePair();
-  const exchangeKeyPair = rsa.generatePair();
+  const [ttpPublicKey, authKeyPair, exchangeKeyPair] = await Promise.all([
+    ttp.publicKey(),
+    rsa.generatePair(),
+    rsa.generatePair(),
+  ]);
   const registration = await ttp.register({
     role: "server",
-    encryptedId: rsa.publicKey(ttpPublicKeyPem).encrypt(serverId),
+    encryptedId: rsa.publicKey(ttpPublicKey.publicKeyPem).encrypt(serverId),
     publicKeys: {
       authPublicKeyPem: authKeyPair.publicKeyPem,
       exchangePublicKeyPem: exchangeKeyPair.publicKeyPem,

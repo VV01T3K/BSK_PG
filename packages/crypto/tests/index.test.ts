@@ -96,9 +96,8 @@ describe("rsa", () => {
   let pair: RsaPair;
   let otherPair: RsaPair;
 
-  beforeAll(() => {
-    pair = rsa.generatePair();
-    otherPair = rsa.generatePair();
+  beforeAll(async () => {
+    [pair, otherPair] = await Promise.all([rsa.generatePair(), rsa.generatePair()]);
   }, 60_000);
 
   it("generatePair() returns PEM-encoded keys", () => {

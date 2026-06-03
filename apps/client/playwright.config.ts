@@ -7,8 +7,6 @@ const CI = Boolean(process.env.CI);
  *
  * The ttp and server apps keep global in-memory state in a single process, so the
  * suite runs serially (one worker, no parallelism) and resets state between tests.
- * In-browser RSA key generation during Register/Authenticate is slow, hence the
- * generous test/expect timeouts.
  */
 export default defineConfig({
   // Unit tests (bun:test, *.test.ts) and e2e tests (*.e2e.ts) share tests/; the
@@ -19,16 +17,12 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   forbidOnly: CI,
-  // Register generates two 4096-bit RSA key pairs in-browser with node-forge's
-  // synchronous path, which freezes the page for tens of seconds. The click that
-  // triggers it absorbs that time, so actionTimeout is uncapped (bounded by the
-  // per-test timeout) and the test/expect budgets are generous.
-  timeout: 240_000,
-  expect: { timeout: 60_000 },
+  timeout: 60_000,
+  expect: { timeout: 15_000 },
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: "http://localhost:3000",
-    actionTimeout: 0,
+    actionTimeout: 15_000,
     navigationTimeout: 60_000,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
