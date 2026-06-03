@@ -1,17 +1,24 @@
-import { issuePrincipalCertificate, random, rsa, type SessionTicket } from "@bsk/crypto";
+import { issueIdentityCertificate, random, rsa, type SessionTicket } from "@bsk/crypto";
 
 import {
   serverAuthenticationPayload,
   userAuthenticationPayload,
-  type RegisterPrincipalInput,
+  type RegisterIdentityInput,
   type ServerAuthenticationInput,
   type ServerSessionKeyInput,
   type UserAuthenticationInput,
   type UserAuthenticationRequest,
   type UserAuthRedirectInput,
 } from "./contract";
-import { ca, pendingAuths, principalKey, principals, sessions, sessionsByRequest } from "./state";
-import type { PrincipalRecord, SessionRecord } from "./state";
+import {
+  ca,
+  pendingAuths,
+  identityKey,
+  registeredIdentities,
+  sessions,
+  sessionsByRequest,
+} from "./state";
+import type { IdentityRecord, SessionRecord } from "./state";
 
 export function ttpPublicKeyResponse() {
   return {
@@ -20,22 +27,22 @@ export function ttpPublicKeyResponse() {
   };
 }
 
-export function registerPrincipal(input: RegisterPrincipalInput) {
+export function registerIdentity(input: RegisterIdentityInput) {
   const subjectId = rsa.privateKey(ca.privateKeyPem).decrypt(input.encryptedId);
   const issuedAt = new Date().toISOString();
-  const principal = {
+  const identity = {
     role: input.role,
     subjectId,
     publicKeys: input.publicKeys,
   };
-  const certificatePem = issueCertificate(principal);
-  const record: PrincipalRecord = {
-    ...principal,
+  const certificatePem = issueCertificate(identity);
+  const record: IdentityRecord = {
+    ...identity,
     certificatePem,
     issuedAt,
   };
 
-  principals.set(principalKey(input.role, subjectId), record);
+  registeredIdentities.set(identityKey(input.role, subjectId), record);
 
   return {
     subjectId,
@@ -50,7 +57,7 @@ export function authenticateServerCertificate(input: ServerAuthenticationInput) 
     subjectId: input.serverId,
     certificatePem: input.certificatePem,
   });
-  verifyPrincipalSignature(server, serverAuthenticationPayload(input), input.signature);
+  verifyIdentitySignature(server, serverAuthenticationPayload(input), input.signature);
   const validatedAt = new Date().toISOString();
 
   pendingAuths.set(input.requestId, {
@@ -109,7 +116,7 @@ export function authenticateUserForServer(input: UserAuthenticationInput) {
     subjectId: request.serverId,
     certificatePem: request.serverCertificatePem,
   });
-  verifyPrincipalSignature(user, userAuthenticationPayload(request), request.signature);
+  verifyIdentitySignature(user, userAuthenticationPayload(request), request.signature);
   const session = createSession(request.requestId, user.subjectId, server.subjectId);
   const ticketPayload = JSON.stringify({
     sessionId: session.sessionId,
@@ -188,33 +195,33 @@ function createSession(requestId: string, userId: string, serverId: string): Ses
   return session;
 }
 
-function verifyPrincipalSignature(principal: PrincipalRecord, payload: string, signature: string) {
-  const verified = rsa.publicKey(principal.publicKeys.authPublicKeyPem).verify(payload, signature);
+function verifyIdentitySignature(identity: IdentityRecord, payload: string, signature: string) {
+  const verified = rsa.publicKey(identity.publicKeys.authPublicKeyPem).verify(payload, signature);
 
   if (!verified) {
-    throw new Error(`${principal.role} authentication signature is invalid`);
+    throw new Error(`${identity.role} authentication signature is invalid`);
   }
 }
 
-type CertifiablePrincipal = Pick<PrincipalRecord, "role" | "subjectId" | "publicKeys">;
+type CertifiableIdentity = Pick<IdentityRecord, "role" | "subjectId" | "publicKeys">;
 
-type CertificateClaim = Pick<PrincipalRecord, "role" | "subjectId"> & {
+type CertificateClaim = Pick<IdentityRecord, "role" | "subjectId"> & {
   certificatePem: string;
 };
 
 const compactPem = (pem: string) => pem.replace(/\s+/g, "");
 
-function issueCertificate(principal: CertifiablePrincipal): string {
-  return issuePrincipalCertificate({
+function issueCertificate(identity: CertifiableIdentity): string {
+  return issueIdentityCertificate({
     authority: ca,
-    role: principal.role,
-    subjectId: principal.subjectId,
-    publicKeyPem: principal.publicKeys.exchangePublicKeyPem,
+    role: identity.role,
+    subjectId: identity.subjectId,
+    publicKeyPem: identity.publicKeys.exchangePublicKeyPem,
   });
 }
 
-function validateCertificate(claim: CertificateClaim): PrincipalRecord {
-  const record = principals.get(principalKey(claim.role, claim.subjectId));
+function validateCertificate(claim: CertificateClaim): IdentityRecord {
+  const record = registeredIdentities.get(identityKey(claim.role, claim.subjectId));
 
   if (!record || compactPem(record.certificatePem) !== compactPem(claim.certificatePem)) {
     throw new Error(`${claim.role} certificate does not match the one issued by TTP`);

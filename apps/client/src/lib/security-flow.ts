@@ -16,8 +16,8 @@ export const securityFlow = {
     await service.reset();
   },
 
-  async registerPrincipals() {
-    await Promise.all([registerUserPrincipal(), service.server.register()]);
+  async registerIdentities() {
+    await Promise.all([registerUserIdentity(), service.server.register()]);
   },
 
   async authenticateSession() {
@@ -90,7 +90,7 @@ export const securityFlow = {
   },
 };
 
-async function registerUserPrincipal() {
+async function registerUserIdentity() {
   const id = hash.of(`user-${random.hex(16)}`).sha256Hex();
   const [authKeyPair, exchangeKeyPair] = await Promise.all([
     rsa.generatePair(),

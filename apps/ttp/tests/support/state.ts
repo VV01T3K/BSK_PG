@@ -1,7 +1,7 @@
-import { pendingAuths, principals, sessions, sessionsByRequest } from "../../src/state";
+import { pendingAuths, registeredIdentities, sessions, sessionsByRequest } from "../../src/state";
 
 export function resetTtpTestState() {
-  principals.clear();
+  registeredIdentities.clear();
   sessions.clear();
   sessionsByRequest.clear();
   pendingAuths.clear();

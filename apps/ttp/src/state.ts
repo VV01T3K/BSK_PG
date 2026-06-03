@@ -1,12 +1,12 @@
 import { createCertificateAuthority } from "@bsk/crypto";
 import { createSecurityLogger } from "@bsk/rpc/log";
 
-import type { PrincipalPublicKeys, Role } from "./contract";
+import type { IdentityPublicKeys, Role } from "./contract";
 
-export interface PrincipalRecord {
+export interface IdentityRecord {
   role: Role;
   subjectId: string;
-  publicKeys: PrincipalPublicKeys;
+  publicKeys: IdentityPublicKeys;
   certificatePem: string;
   issuedAt: string;
 }
@@ -34,7 +34,7 @@ export const ca = createCertificateAuthority({
   organization: "BSK PG Demo",
 });
 
-export const principals = new Map<string, PrincipalRecord>();
+export const registeredIdentities = new Map<string, IdentityRecord>();
 export const sessions = new Map<string, SessionRecord>();
 export const sessionsByRequest = new Map<string, string>();
 export const pendingAuths = new Map<string, PendingAuthRecord>();
@@ -43,6 +43,6 @@ const logger = createSecurityLogger(["application.log", "ttp.log"]);
 
 export const log = logger.log;
 
-export function principalKey(role: Role, subjectId: string): string {
+export function identityKey(role: Role, subjectId: string): string {
   return `${role}:${subjectId}`;
 }

@@ -9,7 +9,7 @@ import { resetTtpTestState } from "./support/state";
 
 type Role = "user" | "server";
 
-interface PrincipalFixture {
+interface IdentityFixture {
   id: string;
   certificatePem: string;
   authPrivateKeyPem: string;
@@ -24,7 +24,7 @@ async function ttpPublicKey(): Promise<string> {
   return payload.publicKeyPem;
 }
 
-async function registerPrincipal(role: Role): Promise<PrincipalFixture> {
+async function registerIdentity(role: Role): Promise<IdentityFixture> {
   const publicKeyPem = await ttpPublicKey();
   const id = hash.of(`${role}-test-id-${random.uuid()}`).sha256Hex();
   const [auth, exchange] = await Promise.all([rsa.generatePair(), rsa.generatePair()]);
@@ -51,10 +51,10 @@ describe("TTP authority", () => {
   });
 
   it(
-    "registers principals, validates certificates, and distributes AES-256 session keys",
+    "registers identities, validates certificates, and distributes AES-256 session keys",
     async () => {
-      const user = await registerPrincipal("user");
-      const server = await registerPrincipal("server");
+      const user = await registerIdentity("user");
+      const server = await registerIdentity("server");
       const requestId = "request-1";
 
       const serverAuth = await ttp.auth.server({
@@ -97,7 +97,7 @@ describe("TTP authority", () => {
   it(
     "rejects an invalid server authentication signature",
     async () => {
-      const server = await registerPrincipal("server");
+      const server = await registerIdentity("server");
 
       await expect(
         ttp.auth.server({
@@ -115,8 +115,8 @@ describe("TTP authority", () => {
   it(
     "rejects an invalid user authentication signature",
     async () => {
-      const user = await registerPrincipal("user");
-      const server = await registerPrincipal("server");
+      const user = await registerIdentity("user");
+      const server = await registerIdentity("server");
       const publicKeyPem = await ttpPublicKey();
       const requestId = "bad-user-signature";
       const request = signedUserRequest(user, server, requestId);
@@ -140,8 +140,8 @@ describe("TTP authority", () => {
   it(
     "rejects a forged user certificate",
     async () => {
-      const user = await registerPrincipal("user");
-      const server = await registerPrincipal("server");
+      const user = await registerIdentity("user");
+      const server = await registerIdentity("server");
       const publicKeyPem = await ttpPublicKey();
       const requestId = "forged-cert";
 
@@ -163,8 +163,8 @@ describe("TTP authority", () => {
   it(
     "rejects user authentication without a matching server-initiated request",
     async () => {
-      const user = await registerPrincipal("user");
-      const server = await registerPrincipal("server");
+      const user = await registerIdentity("user");
+      const server = await registerIdentity("server");
       const publicKeyPem = await ttpPublicKey();
 
       await expect(
@@ -181,9 +181,9 @@ describe("TTP authority", () => {
   it(
     "rejects user authentication that does not match the pending user",
     async () => {
-      const expectedUser = await registerPrincipal("user");
-      const otherUser = await registerPrincipal("user");
-      const server = await registerPrincipal("server");
+      const expectedUser = await registerIdentity("user");
+      const otherUser = await registerIdentity("user");
+      const server = await registerIdentity("server");
       const publicKeyPem = await ttpPublicKey();
       const requestId = "mismatched-user";
 
@@ -203,8 +203,8 @@ describe("TTP authority", () => {
   it(
     "issues a user authentication request (redirect) after the server is validated",
     async () => {
-      const user = await registerPrincipal("user");
-      const server = await registerPrincipal("server");
+      const user = await registerIdentity("user");
+      const server = await registerIdentity("server");
       const requestId = "redirect-ok";
 
       await authenticateServerForUser(server, user, requestId);
@@ -231,8 +231,8 @@ describe("TTP authority", () => {
   it(
     "rejects fetching the server session key for a closed session",
     async () => {
-      const user = await registerPrincipal("user");
-      const server = await registerPrincipal("server");
+      const user = await registerIdentity("user");
+      const server = await registerIdentity("server");
       const publicKeyPem = await ttpPublicKey();
       const requestId = "closed-session-key";
 
@@ -252,8 +252,8 @@ describe("TTP authority", () => {
   it(
     "closes sessions after successful authentication",
     async () => {
-      const user = await registerPrincipal("user");
-      const server = await registerPrincipal("server");
+      const user = await registerIdentity("user");
+      const server = await registerIdentity("server");
       const publicKeyPem = await ttpPublicKey();
       const requestId = "close-session";
 
@@ -275,8 +275,8 @@ describe("TTP authority", () => {
 });
 
 async function authenticateServerForUser(
-  server: PrincipalFixture,
-  user: PrincipalFixture,
+  server: IdentityFixture,
+  user: IdentityFixture,
   requestId: string,
 ) {
   return ttp.auth.server({
@@ -288,7 +288,7 @@ async function authenticateServerForUser(
   });
 }
 
-function signServerAuth(server: PrincipalFixture, requestId: string, userId: string) {
+function signServerAuth(server: IdentityFixture, requestId: string, userId: string) {
   return rsa.privateKey(server.authPrivateKeyPem).sign(
     serverAuthenticationPayload({
       certificatePem: server.certificatePem,
@@ -300,8 +300,8 @@ function signServerAuth(server: PrincipalFixture, requestId: string, userId: str
 }
 
 function signedUserRequest(
-  user: PrincipalFixture,
-  server: PrincipalFixture,
+  user: IdentityFixture,
+  server: IdentityFixture,
   requestId: string,
   userCertificatePem = user.certificatePem,
 ) {

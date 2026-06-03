@@ -28,9 +28,9 @@ So the **key size is fixed at 4096 bits** and the algorithm is fixed to RSA. We 
 both. (Other mandated parameters we already satisfy and keep: AES-256 for session
 keys, a PRNG for session-key generation, SHA-256 for hashing/signatures.)
 
-### 2. Each principal needs two key pairs (by design, not waste)
+### 2. Each identity needs two key pairs (by design, not waste)
 
-Registration generates **two** 4096-bit pairs per principal:
+Registration generates **two** 4096-bit pairs per identity:
 
 - `apps/client/src/lib/security-flow.ts:21-22` (User)
 - `apps/server/src/protocol.ts:26-27` (Server)
@@ -42,7 +42,7 @@ const [authKeyPair, exchangeKeyPair] = await Promise.all([rsa.generatePair(), rs
 The split is intentional: the **auth key** is used only for signing
 (`rsa.privateKey(...).sign(...)`), and the **exchange key** is used only for
 encryption (the TTP encrypts the AES session key to the exchange public key with
-RSA-OAEP-SHA256; the principal decrypts it with the exchange private key). Separating
+RSA-OAEP-SHA256; the identity decrypts it with the exchange private key). Separating
 signing and encryption keys is standard hygiene — and it is also required if we move
 to the Web Crypto API, where a key is bound to one algorithm/usage at generation time.
 So two pairs stays.
@@ -50,7 +50,7 @@ So two pairs stays.
 ### 3. The culprit was synchronous, pure-JS keygen on the browser main thread
 
 Before the fix, all key generation went through `node-forge`
-(`packages/crypto/src/crypto.ts`). Principal key generation was:
+(`packages/crypto/src/crypto.ts`). Identity key generation was:
 
 ```ts
 // packages/crypto/src/crypto.ts:146
@@ -124,7 +124,7 @@ Additional easy wins that stack on top:
 
 `rsa.generatePair()` is now async and returns a `Promise<RsaPair>`.
 
-Both real principal registration call sites (`registerPrincipals`,
+Both real identity registration call sites (`registerIdentities`,
 `registerProtectedServer`) now generate the auth and exchange pairs in parallel. The
 TTP CA keygen (`createCertificateAuthority`, server-side, ~0.5 s) stays on synchronous
 node-forge because it is startup-only and not the bottleneck.
@@ -132,7 +132,7 @@ node-forge because it is startup-only and not the bottleneck.
 ### Status
 
 - **Implemented:** Web Crypto key generation across both browser and server/Bun
-  principal registration paths.
+  identity registration paths.
 - **Not included:** pre-warm / sessionStorage caching. That remains an optional
   follow-up.
 

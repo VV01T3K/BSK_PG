@@ -23,7 +23,7 @@ export function useSecurityFlow() {
 
   const forged = useMutation({ mutationFn: securityFlow.verifyForgedCertificateIsRejected });
   const register = useMutation({
-    mutationFn: securityFlow.registerPrincipals,
+    mutationFn: securityFlow.registerIdentities,
     onSuccess: invalidate,
   });
   const authenticate = useMutation({

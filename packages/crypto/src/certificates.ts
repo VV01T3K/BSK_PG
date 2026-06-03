@@ -4,7 +4,7 @@ import { random } from "./crypto";
 import type {
   CertificateAuthority,
   CertificateAuthorityOptions,
-  PrincipalCertificateInput,
+  IdentityCertificateInput,
 } from "./types";
 
 const RSA_BITS = 4096;
@@ -42,7 +42,7 @@ export function createCertificateAuthority(
   };
 }
 
-export function issuePrincipalCertificate(input: PrincipalCertificateInput): string {
+export function issueIdentityCertificate(input: IdentityCertificateInput): string {
   const cert = forge.pki.createCertificate();
 
   cert.publicKey = forge.pki.publicKeyFromPem(input.publicKeyPem);
@@ -51,7 +51,7 @@ export function issuePrincipalCertificate(input: PrincipalCertificateInput): str
   cert.validity.notAfter = new Date(Date.now() + (input.validDays ?? 30) * DAY_MS);
   cert.setSubject([
     { name: "commonName", value: `${input.role}:${input.subjectId}` },
-    { name: "organizationName", value: input.organization ?? "BSK PG Demo Principal" },
+    { name: "organizationName", value: input.organization ?? "BSK PG Demo Identity" },
   ]);
   cert.setIssuer(input.authority.certificate.subject.attributes);
   cert.setExtensions([

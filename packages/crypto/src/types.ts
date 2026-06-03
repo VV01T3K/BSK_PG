@@ -64,7 +64,7 @@ export type CertificateAuthority = {
   certificatePem: string;
 };
 
-export type PrincipalCertificateInput = {
+export type IdentityCertificateInput = {
   authority: CertificateAuthority;
   role: string;
   subjectId: string;

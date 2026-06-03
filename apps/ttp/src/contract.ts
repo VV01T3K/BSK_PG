@@ -2,15 +2,15 @@ import { hash, signedPayload } from "@bsk/crypto";
 
 export type Role = "user" | "server";
 
-export type PrincipalPublicKeys = {
+export type IdentityPublicKeys = {
   authPublicKeyPem: string;
   exchangePublicKeyPem: string;
 };
 
-export type RegisterPrincipalInput = {
+export type RegisterIdentityInput = {
   role: Role;
   encryptedId: string;
-  publicKeys: PrincipalPublicKeys;
+  publicKeys: IdentityPublicKeys;
 };
 
 export type ServerAuthenticationInput = {

@@ -2,7 +2,7 @@ import { RSA_BITS } from "@bsk/crypto";
 import { ORPCError, os, type } from "@orpc/server";
 
 import type {
-  RegisterPrincipalInput,
+  RegisterIdentityInput,
   ServerAuthenticationInput,
   ServerSessionKeyInput,
   UserAuthenticationInput,
@@ -12,7 +12,7 @@ import {
   authenticateServerCertificate,
   authenticateUserForServer,
   closeSession,
-  registerPrincipal,
+  registerIdentity,
   requestUserAuthentication,
   serverSessionKey,
   ttpPublicKeyResponse,
@@ -32,9 +32,9 @@ export const ttpRouter = {
     keyLength: RSA_BITS,
   })),
 
-  register: os.input(type<RegisterPrincipalInput>()).handler(({ input }) => {
+  register: os.input(type<RegisterIdentityInput>()).handler(({ input }) => {
     try {
-      const registration = registerPrincipal(input);
+      const registration = registerIdentity(input);
       log(input.role, "registered with TTP", `${input.role}:${registration.subjectId}`);
       return registration;
     } catch (error) {
