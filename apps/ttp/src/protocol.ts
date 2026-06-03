@@ -1,4 +1,10 @@
-import { issueIdentityCertificate, random, rsa, type SessionTicket } from "@bsk/crypto";
+import {
+  issueIdentityCertificate,
+  random,
+  rsa,
+  verifyCertificateSignedBy,
+  type SessionTicket,
+} from "@bsk/crypto";
 
 import {
   serverAuthenticationPayload,
@@ -209,8 +215,6 @@ type CertificateClaim = Pick<IdentityRecord, "role" | "subjectId"> & {
   certificatePem: string;
 };
 
-const compactPem = (pem: string) => pem.replace(/\s+/g, "");
-
 function issueCertificate(identity: CertifiableIdentity): string {
   return issueIdentityCertificate({
     authority: ca,
@@ -221,10 +225,19 @@ function issueCertificate(identity: CertifiableIdentity): string {
 }
 
 function validateCertificate(claim: CertificateClaim): IdentityRecord {
-  const record = registeredIdentities.get(identityKey(claim.role, claim.subjectId));
+  const { commonName } = verifyCertificateSignedBy(ca, claim.certificatePem);
+  const expectedCommonName = identityKey(claim.role, claim.subjectId);
 
-  if (!record || compactPem(record.certificatePem) !== compactPem(claim.certificatePem)) {
-    throw new Error(`${claim.role} certificate does not match the one issued by TTP`);
+  if (commonName !== expectedCommonName) {
+    throw new Error(
+      `${claim.role} certificate subject "${commonName}" does not match the claimed identity`,
+    );
+  }
+
+  const record = registeredIdentities.get(expectedCommonName);
+
+  if (!record) {
+    throw new Error(`${claim.role} ${claim.subjectId} is not registered with TTP`);
   }
 
   return record;

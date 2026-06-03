@@ -13,7 +13,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export function createCertificateAuthority(
   options: CertificateAuthorityOptions,
 ): CertificateAuthority {
-  const keys = forge.pki.rsa.generateKeyPair({ bits: RSA_BITS, workers: -1 });
+  const keys = forge.pki.rsa.generateKeyPair({ bits: options.bits ?? RSA_BITS, workers: -1 });
   const cert = forge.pki.createCertificate();
   const attrs = [
     { name: "commonName", value: options.commonName },
@@ -70,4 +70,20 @@ export function issueIdentityCertificate(input: IdentityCertificateInput): strin
   cert.sign(input.authority.privateKey, forge.md.sha256.create());
 
   return forge.pki.certificateToPem(cert);
+}
+
+export function verifyCertificateSignedBy(
+  authority: CertificateAuthority,
+  certificatePem: string,
+): { commonName: string } {
+  try {
+    const certificate = forge.pki.certificateFromPem(certificatePem);
+    if (authority.certificate.verify(certificate)) {
+      return { commonName: String(certificate.subject.getField("CN")?.value ?? "") };
+    }
+  } catch {
+    // Unparseable PEM or issuer mismatch
+  }
+
+  throw new Error("certificate is not signed by the trusted authority");
 }

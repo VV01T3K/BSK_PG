@@ -7,6 +7,7 @@ import {
   createCertificateAuthority,
   issueIdentityCertificate,
   rsa,
+  verifyCertificateSignedBy,
 } from "../src/index";
 
 type ExtKeyUsage = { clientAuth?: boolean; serverAuth?: boolean };
@@ -46,6 +47,29 @@ describe("certificates", () => {
     expect(cert.subject.getField("CN")?.value).toBe("user:user-123");
     expect(cert.issuer.getField("CN")?.value).toBe("BSK PG Test CA");
     expect(ca.certificate.verify(cert)).toBe(true);
+  });
+
+  it("verifies a genuine certificate and rejects a forged one (man-in-the-middle)", () => {
+    const genuine = issueIdentityCertificate({
+      authority: ca,
+      role: "server",
+      subjectId: "s",
+      publicKeyPem: identityPublicKeyPem,
+    });
+    const rogue = createCertificateAuthority({
+      commonName: "Rogue",
+      organization: "X",
+      bits: 2048,
+    });
+    const forged = issueIdentityCertificate({
+      authority: rogue,
+      role: "server",
+      subjectId: "s",
+      publicKeyPem: identityPublicKeyPem,
+    });
+
+    expect(verifyCertificateSignedBy(ca, genuine).commonName).toBe("server:s");
+    expect(() => verifyCertificateSignedBy(ca, forged)).toThrow(/not signed by the trusted/);
   });
 
   it("reflects the identity role in extKeyUsage", () => {
