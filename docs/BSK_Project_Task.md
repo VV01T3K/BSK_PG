@@ -4,9 +4,9 @@
 
 ### Emulating environment with Trusted Third Party and Client-Server data exchange scenario
 
-*Piotr Rajchowski — Version 1.10, Gdańsk, 23.02.2026*
+_Piotr Rajchowski — Version 1.10, Gdańsk, 23.02.2026_
 
-*Gdańsk University of Technology — Faculty of Electronics, Telecommunications and Informatics*
+_Gdańsk University of Technology — Faculty of Electronics, Telecommunications and Informatics_
 
 ---
 
@@ -22,7 +22,7 @@ The project is evaluated according to the following rules (**40 points in total*
 
 The details of project evaluation are described in Section 3 and presented in Table 1.
 
-> ⚠️ **Each student *must* select the project group on the eNauczanie platform.** Skipping this step will result in assigning zero points from the control meeting.
+> ⚠️ **Each student _must_ select the project group on the eNauczanie platform.** Skipping this step will result in assigning zero points from the control meeting.
 
 ---
 
@@ -73,6 +73,7 @@ TTP validates the response from User. If the validation is positive, it sends an
 The User and Server are authenticated and have a valid session key, so the requested service can be started. From now on, the **encrypted data (using the session key)** are exchanged between User and Server. After finishing the process, the session is closed. The next service request repeats the authentication process.
 
 > **Notes:**
+>
 > - The TTP public key can be sent to User / Server just after the login phase was initiated.
 > - The public User's and Server's IDs must be generated using a **secure hash algorithm**.
 
@@ -143,23 +144,24 @@ Only **one submission date** is planned. In the case of obtaining an insufficien
 
 #### Project submission — Presentation during classes
 
-| # | Task | Points |
-|---|------|:------:|
-| 1 | Generation of public key certificates, session keys, correct user authentication (existence of three independent applications), implementation of application logs. | 4 |
-| 2 | Creation of a network environment with at least 2 virtual machines (e.g. TTP and Server). | 5 |
-| 3 | Demonstration of correct implementation of the assumed project functionality (i.e. correct authentication of user–server with involved TTP, data transfer between client–server). | 5 |
-| 4 | Presentation of correct and incorrect validation of authentication when the certificate was forged by an attacker (pointing out resistance to a man-in-the-middle attack). | 6 |
+| #   | Task                                                                                                                                                                              | Points |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----: |
+| 1   | Generation of public key certificates, session keys, correct user authentication (existence of three independent applications), implementation of application logs.               |   4    |
+| 2   | Creation of a network environment with at least 2 virtual machines (e.g. TTP and Server).                                                                                         |   5    |
+| 3   | Demonstration of correct implementation of the assumed project functionality (i.e. correct authentication of user–server with involved TTP, data transfer between client–server). |   5    |
+| 4   | Presentation of correct and incorrect validation of authentication when the certificate was forged by an attacker (pointing out resistance to a man-in-the-middle attack).        |   6    |
 
 #### Reports — Evaluated only after project presentation
 
-**Partial report (control meeting) — 5 points** *(+ code, + presentation during classes)*
+**Partial report (control meeting) — 5 points** _(+ code, + presentation during classes)_
 
 Minimal requirements:
+
 - Presentation: e.g. possibility of certificate generation, authentication of two identities; basic version of client/server/TTP applications — **3 points**
 - Code in University's GitLab repository shared with teacher — **2 points**
-- Sending a 1-page description/report on eNauczanie is *not* obligatory.
+- Sending a 1-page description/report on eNauczanie is _not_ obligatory.
 
-**Project report — 15 points** *(+ code, + University GIT repository, + bibliography)*
+**Project report — 15 points** _(+ code, + University GIT repository, + bibliography)_
 
 - Description of the realised task — **4 points**
 - Description of key application functionality, pointing out code fragments as listings — **3 points**

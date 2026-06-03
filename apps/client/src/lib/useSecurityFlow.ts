@@ -30,8 +30,12 @@ export function useSecurityFlow() {
     mutationFn: securityFlow.authenticateSession,
     onSuccess: invalidate,
   });
-  const exchange = useMutation({
-    mutationFn: securityFlow.sendEncryptedServiceRequest,
+  const uploadFile = useMutation({
+    mutationFn: securityFlow.uploadDemoFile,
+    onSuccess: invalidate,
+  });
+  const viewFile = useMutation({
+    mutationFn: securityFlow.viewDemoFile,
     onSuccess: invalidate,
   });
   const closeSession = useMutation({
@@ -46,7 +50,7 @@ export function useSecurityFlow() {
     },
   });
 
-  const mutations = [register, authenticate, exchange, forged, closeSession, reset];
+  const mutations = [register, authenticate, uploadFile, viewFile, forged, closeSession, reset];
   const server = serverQuery.data;
   const clientStatus = clientStatusQuery.data;
 
@@ -55,7 +59,8 @@ export function useSecurityFlow() {
     server,
     register,
     authenticate,
-    exchange,
+    uploadFile,
+    viewFile,
     forged,
     closeSession,
     reset,

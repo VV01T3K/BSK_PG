@@ -9,6 +9,8 @@ type ServiceServerState = {
   sessionId?: string;
   sessionKey?: string;
   serviceExchanged?: boolean;
+  latestDemoFile?: DemoStoredFile;
+  lastServiceEvent?: { event: string; details: string };
   pendingRequests: Map<string, { userId: string; createdAt: string }>;
 };
 
@@ -18,10 +20,22 @@ export interface ServiceServerStatus {
   certificatePem?: string;
   sessionEstablished: boolean;
   serviceExchanged: boolean;
+  latestDemoFile?: DemoFileMeta;
 }
 
 export const state: ServiceServerState = {
   pendingRequests: new Map(),
+};
+
+export type DemoFileMeta = {
+  name: string;
+  size: number;
+  mimeType: string;
+};
+
+export type DemoStoredFile = DemoFileMeta & {
+  contentBase64: string;
+  storedAt: string;
 };
 
 const logger = createSecurityLogger(["application.log", "server.log"]);
@@ -46,6 +60,13 @@ export function readServiceServerStatus(): ServiceServerStatus {
     certificatePem: state.certificatePem,
     sessionEstablished: Boolean(state.sessionId),
     serviceExchanged: Boolean(state.serviceExchanged),
+    latestDemoFile: state.latestDemoFile
+      ? {
+          name: state.latestDemoFile.name,
+          size: state.latestDemoFile.size,
+          mimeType: state.latestDemoFile.mimeType,
+        }
+      : undefined,
   };
 }
 

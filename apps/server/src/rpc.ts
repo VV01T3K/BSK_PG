@@ -68,7 +68,11 @@ export const serviceRouter = {
     exchange: os.input(type<{ payload: SessionEncryptedPayload }>()).handler(({ input }) => {
       try {
         const response = exchangeProtectedServiceData(input.payload);
-        log("encrypted service exchange", `session ${state.sessionId}`);
+        const event = state.lastServiceEvent;
+        log(
+          event?.event ?? "demo file service used",
+          event ? `${event.details}, session ${state.sessionId}` : `session ${state.sessionId}`,
+        );
         return response;
       } catch (error) {
         reject("BAD_REQUEST", error);

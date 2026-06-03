@@ -20,6 +20,39 @@ import {
 const ttpBaseUrl = process.env.TTP_API_BASE_URL ?? "http://localhost:3001";
 const ttp = createRpcClient<TtpRouter>(ttpBaseUrl);
 
+type DemoFileServiceRequest =
+  | {
+      kind: "file.upload";
+      name: string;
+      mimeType: string;
+      contentBase64: string;
+    }
+  | {
+      kind: "file.view";
+    };
+
+type DemoFileResponse = {
+  kind: "file.current";
+  name: string;
+  mimeType: string;
+  size: number;
+  contentBase64: string;
+  storedAt: string;
+};
+
+type DemoFileEmptyResponse = {
+  kind: "file.empty";
+};
+
+type DemoFileServiceResponse = DemoFileResponse | DemoFileEmptyResponse;
+
+type UploadFileRequest = {
+  kind: "file.upload";
+  name: string;
+  mimeType: string;
+  contentBase64: string;
+};
+
 export async function registerProtectedServer() {
   const serverId = hash.of(`server-${random.uuid()}`).sha256Hex();
   const [ttpPublicKey, authKeyPair, exchangeKeyPair] = await Promise.all([
@@ -43,6 +76,8 @@ export async function registerProtectedServer() {
   state.pendingRequests.clear();
   clearLocalSession();
   state.serviceExchanged = undefined;
+  state.latestDemoFile = undefined;
+  state.lastServiceEvent = undefined;
 
   return readServiceServerStatus();
 }
@@ -111,14 +146,96 @@ export function closeLocalSession() {
 export function exchangeProtectedServiceData(payload: SessionEncryptedPayload) {
   const sessionKey = requireSessionKey();
   const sessionCipher = aesGcm.withKey(sessionKey).forSession(state.sessionId!);
-  const plaintext = sessionCipher.decrypt(payload);
-  const responsePlaintext = `Protected service accepted encrypted request: ${plaintext}`;
-  const encryptedResponse = sessionCipher.encrypt(responsePlaintext);
+  const request = decodeFileServiceRequest(sessionCipher.decrypt(payload));
+  const response = handleFileServiceRequest(request);
+  const encryptedResponse = sessionCipher.encrypt(JSON.stringify(response));
 
   state.serviceExchanged = true;
 
   return {
     payload: encryptedResponse,
+  };
+}
+
+function handleFileServiceRequest(request: DemoFileServiceRequest): DemoFileServiceResponse {
+  if (request.kind === "file.upload") {
+    return uploadFile(request);
+  }
+
+  if (request.kind === "file.view") {
+    state.lastServiceEvent = {
+      event: "demo file viewed",
+      details: state.latestDemoFile
+        ? `${state.latestDemoFile.name} (${state.latestDemoFile.size} bytes)`
+        : "no uploaded file",
+    };
+    return state.latestDemoFile
+      ? currentFileResponse(state.latestDemoFile)
+      : { kind: "file.empty" };
+  }
+
+  throw new Error("unsupported demo file service request");
+}
+
+function uploadFile(request: UploadFileRequest): DemoFileResponse {
+  const storedAt = new Date().toISOString();
+  const size = Buffer.from(request.contentBase64, "base64").byteLength;
+  const response: DemoFileResponse = {
+    kind: "file.current",
+    name: request.name,
+    mimeType: request.mimeType,
+    size,
+    contentBase64: request.contentBase64,
+    storedAt,
+  };
+
+  state.latestDemoFile = response;
+  state.lastServiceEvent = {
+    event: "demo file uploaded",
+    details: `${response.name} (${response.size} bytes)`,
+  };
+
+  return response;
+}
+
+function currentFileResponse(file: {
+  name: string;
+  mimeType: string;
+  size: number;
+  contentBase64: string;
+  storedAt: string;
+}): DemoFileResponse {
+  return {
+    kind: "file.current",
+    name: file.name,
+    mimeType: file.mimeType,
+    size: file.size,
+    contentBase64: file.contentBase64,
+    storedAt: file.storedAt,
+  };
+}
+
+function decodeFileServiceRequest(plaintext: string): DemoFileServiceRequest {
+  const value = JSON.parse(plaintext) as {
+    kind?: string;
+    name?: string;
+    mimeType?: string;
+    contentBase64?: string;
+  };
+
+  if (value.kind === "file.view") {
+    return { kind: value.kind };
+  }
+
+  if (value.kind !== "file.upload" || !value.name || !value.contentBase64) {
+    throw new Error("invalid demo file service request");
+  }
+
+  return {
+    kind: "file.upload",
+    name: value.name,
+    mimeType: value.mimeType ?? "application/octet-stream",
+    contentBase64: value.contentBase64,
   };
 }
 

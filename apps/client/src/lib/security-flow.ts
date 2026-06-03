@@ -1,4 +1,11 @@
-import { aesGcm, hash, random, rsa, type SessionTicket } from "@bsk/crypto";
+import {
+  aesGcm,
+  hash,
+  random,
+  rsa,
+  type SessionEncryptedPayload,
+  type SessionTicket,
+} from "@bsk/crypto";
 import { userAuthenticationPayload } from "ttp/contract";
 
 import { service, ttpProtocol, type UserAuthenticationRequest } from "#/api";
@@ -9,6 +16,41 @@ type RegisteredServer = Awaited<ReturnType<typeof service.state>> & {
   serverId: string;
   certificatePem: string;
 };
+
+type DemoFileServiceRequest =
+  | {
+      kind: "file.upload";
+      name: string;
+      mimeType: string;
+      contentBase64: string;
+    }
+  | {
+      kind: "file.view";
+    };
+
+export type DemoFileTransferInput = {
+  name: string;
+  mimeType: string;
+  contentBase64: string;
+};
+
+export type DemoFileCurrentResponse = {
+  kind: "file.current";
+  name: string;
+  mimeType: string;
+  size: number;
+  contentBase64: string;
+  storedAt: string;
+  encryptedPayload: SessionEncryptedPayload;
+};
+
+type ServerDemoFileCurrentResponse = Omit<DemoFileCurrentResponse, "encryptedPayload">;
+
+export type DemoFileServiceResponse =
+  | DemoFileCurrentResponse
+  | {
+      kind: "file.empty";
+    };
 
 export const securityFlow = {
   async resetEnvironment() {
@@ -49,15 +91,17 @@ export const securityFlow = {
     });
   },
 
-  async sendEncryptedServiceRequest() {
-    const { sessionId, userSessionKey } = activeSession();
-    const user = registeredUser();
-    const requestPlaintext = `User ${user.id.slice(0, 12)} requests the protected grade-summary service.`;
-    const sessionCipher = aesGcm.withKey(userSessionKey).forSession(sessionId);
-    const encryptedRequest = sessionCipher.encrypt(requestPlaintext);
-    const response = await service.service.exchange({ payload: encryptedRequest });
+  uploadDemoFile(input: DemoFileTransferInput) {
+    return invokeFileService({
+      kind: "file.upload",
+      name: input.name,
+      mimeType: input.mimeType,
+      contentBase64: input.contentBase64,
+    });
+  },
 
-    return sessionCipher.decrypt(response.payload);
+  viewDemoFile() {
+    return invokeFileService({ kind: "file.view" });
   },
 
   async verifyForgedCertificateIsRejected() {
@@ -127,6 +171,34 @@ async function loadRegisteredServer() {
     throw new Error("protected service server is not registered yet");
   }
   return server as RegisteredServer;
+}
+
+async function invokeFileService(
+  request: DemoFileServiceRequest,
+): Promise<DemoFileServiceResponse> {
+  const { sessionId, userSessionKey } = activeSession();
+  const sessionCipher = aesGcm.withKey(userSessionKey).forSession(sessionId);
+  const encryptedRequest = sessionCipher.encrypt(JSON.stringify(request));
+  const response = await service.service.exchange({ payload: encryptedRequest });
+  const serverResult = JSON.parse(sessionCipher.decrypt(response.payload)) as
+    | ServerDemoFileCurrentResponse
+    | Exclude<DemoFileServiceResponse, DemoFileCurrentResponse>;
+  const result: DemoFileServiceResponse =
+    serverResult.kind === "file.current"
+      ? { ...serverResult, encryptedPayload: response.payload }
+      : serverResult;
+
+  if (
+    request.kind === "file.upload" &&
+    (result.kind !== "file.current" ||
+      result.name !== request.name ||
+      result.mimeType !== request.mimeType ||
+      result.contentBase64 !== request.contentBase64)
+  ) {
+    throw new Error("protected file upload response did not match request");
+  }
+
+  return result;
 }
 
 function createUserAuthenticationRequest(
