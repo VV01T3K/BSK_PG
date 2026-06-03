@@ -29,7 +29,7 @@ export interface PendingAuthRecord {
   validatedAt: string;
 }
 
-export const ca = createCertificateAuthority({
+export const ca = await createCertificateAuthority({
   commonName: "BSK PG Trusted Third Party",
   organization: "BSK PG Demo",
 });

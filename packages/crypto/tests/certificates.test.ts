@@ -17,7 +17,7 @@ describe("certificates", () => {
   let identityPublicKeyPem: string;
 
   beforeAll(async () => {
-    ca = createCertificateAuthority({ commonName: "BSK PG Test CA", organization: "BSK PG" });
+    ca = await createCertificateAuthority({ commonName: "BSK PG Test CA", organization: "BSK PG" });
     identityPublicKeyPem = (await rsa.generatePair()).publicKeyPem;
   }, 60_000);
 
@@ -49,18 +49,14 @@ describe("certificates", () => {
     expect(ca.certificate.verify(cert)).toBe(true);
   });
 
-  it("verifies a genuine certificate and rejects a forged one (man-in-the-middle)", () => {
+  it("verifies a genuine certificate and rejects a forged one (man-in-the-middle)", async () => {
     const genuine = issueIdentityCertificate({
       authority: ca,
       role: "server",
       subjectId: "s",
       publicKeyPem: identityPublicKeyPem,
     });
-    const rogue = createCertificateAuthority({
-      commonName: "Rogue",
-      organization: "X",
-      bits: 2048,
-    });
+    const rogue = await createCertificateAuthority({ commonName: "Rogue", organization: "X" });
     const forged = issueIdentityCertificate({
       authority: rogue,
       role: "server",

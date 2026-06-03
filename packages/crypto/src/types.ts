@@ -54,7 +54,6 @@ export type CertificateAuthorityOptions = {
   commonName: string;
   organization: string;
   validDays?: number;
-  bits?: number;
 };
 
 export type CertificateAuthority = {

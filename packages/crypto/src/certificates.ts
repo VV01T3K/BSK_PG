@@ -1,26 +1,26 @@
 import forge from "node-forge";
 
-import { random } from "./crypto";
+import { random, rsa } from "./crypto";
 import type {
   CertificateAuthority,
   CertificateAuthorityOptions,
   IdentityCertificateInput,
 } from "./types";
 
-const RSA_BITS = 4096;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export function createCertificateAuthority(
+export async function createCertificateAuthority(
   options: CertificateAuthorityOptions,
-): CertificateAuthority {
-  const keys = forge.pki.rsa.generateKeyPair({ bits: options.bits ?? RSA_BITS, workers: -1 });
+): Promise<CertificateAuthority> {
+  const pair = await rsa.generatePair();
+  const privateKey = forge.pki.privateKeyFromPem(pair.privateKeyPem);
   const cert = forge.pki.createCertificate();
   const attrs = [
     { name: "commonName", value: options.commonName },
     { name: "organizationName", value: options.organization },
   ];
 
-  cert.publicKey = keys.publicKey;
+  cert.publicKey = forge.pki.publicKeyFromPem(pair.publicKeyPem);
   cert.serialNumber = random.hex(16);
   cert.validity.notBefore = new Date();
   cert.validity.notAfter = new Date(Date.now() + (options.validDays ?? 365) * DAY_MS);
@@ -31,13 +31,13 @@ export function createCertificateAuthority(
     { name: "keyUsage", keyCertSign: true, digitalSignature: true, keyEncipherment: true },
     { name: "subjectKeyIdentifier" },
   ]);
-  cert.sign(keys.privateKey, forge.md.sha256.create());
+  cert.sign(privateKey, forge.md.sha256.create());
 
   return {
-    privateKey: keys.privateKey,
+    privateKey,
     certificate: cert,
-    privateKeyPem: forge.pki.privateKeyToPem(keys.privateKey),
-    publicKeyPem: forge.pki.publicKeyToPem(keys.publicKey),
+    privateKeyPem: pair.privateKeyPem,
+    publicKeyPem: pair.publicKeyPem,
     certificatePem: forge.pki.certificateToPem(cert),
   };
 }
