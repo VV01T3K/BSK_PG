@@ -11,7 +11,7 @@ import {
   type UserAuthRedirectInput,
 } from "./contract";
 import { ca, pendingAuths, principalKey, principals, sessions, sessionsByRequest } from "./state";
-import type { PrincipalRecord, SessionRecord } from "./types";
+import type { PrincipalRecord, SessionRecord } from "./state";
 
 export function ttpPublicKeyResponse() {
   return {
