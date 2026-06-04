@@ -151,11 +151,24 @@ export const aesGcm = {
 
 export const rsa = {
   async generatePair(): Promise<RsaPair> {
-    const pair = forge.pki.rsa.generateKeyPair({ bits: RSA_BITS, workers: -1 });
+    const pair = await crypto.subtle.generateKey(
+      {
+        name: "RSASSA-PKCS1-v1_5",
+        modulusLength: RSA_BITS,
+        publicExponent: new Uint8Array([1, 0, 1]),
+        hash: "SHA-256",
+      },
+      true,
+      ["sign", "verify"],
+    );
+    const [publicKeyDer, privateKeyDer] = await Promise.all([
+      crypto.subtle.exportKey("spki", pair.publicKey),
+      crypto.subtle.exportKey("pkcs8", pair.privateKey),
+    ]);
 
     return {
-      publicKeyPem: forge.pki.publicKeyToPem(pair.publicKey),
-      privateKeyPem: forge.pki.privateKeyToPem(pair.privateKey),
+      publicKeyPem: derToPem("PUBLIC KEY", publicKeyDer),
+      privateKeyPem: derToPem("PRIVATE KEY", privateKeyDer),
     };
   },
 
