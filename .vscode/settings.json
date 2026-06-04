@@ -1,6 +1,9 @@
 {
   "files.exclude": {
-    ".mise-setup-done": true
+    ".mise-setup-done": true,
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/.tanstack": true
   },
   "files.watcherExclude": {
     "**/routeTree.gen.ts": true
@@ -12,10 +15,13 @@
     "**/routeTree.gen.ts": true
   },
   "editor.defaultFormatter": "oxc.oxc-vscode",
-  "oxc.fmt.configPath": "./vite.config.ts",
+  "oxc.configPath": "./.oxlintrc.json",
+  "oxc.fmt.configPath": "./.oxfmtrc.json",
+  "oxc.fmt.experimental": true,
   "editor.formatOnSave": true,
   "editor.formatOnSaveMode": "file",
   "editor.codeActionsOnSave": {
     "source.fixAll.oxc": "explicit"
-  }
+  },
+  "docwriter.style": "Doxygen"
 }

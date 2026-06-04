@@ -1,32 +1,33 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/php
 {
-	"name": "DEV-BSK",
-	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"build": {
-		"dockerfile": "Dockerfile",
-		"context": ".."
-	},
-	"remoteEnv": {
-		"PATH": "/home/vscode/.local/share/mise/shims:/home/vscode/.local/bin:${containerEnv:PATH}"
-	},
-	"features": {
-		"ghcr.io/devcontainers/features/docker-in-docker:2": {
-			"moby": false,
-			"azureDnsAutoDetection": false
-		}
-	},
-	"customizations": {
-		"vscode": {
-			"extensions": [
-				"hverlin.mise-vscode",
-				"bradlc.vscode-tailwindcss",
-				"tamasfe.even-better-toml",
-				"docker.docker",
-				"ms-playwright.playwright",
-				"VoidZero.vite-plus-extension-pack"
-			]
-		}
-	},
-	"onCreateCommand": "rm -f .mise-setup-done && mise trust && mise install"
+  "name": "DEV-BSK",
+  // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "remoteEnv": {
+    "PATH": "/home/vscode/.local/share/mise/shims:/home/vscode/.local/bin:${containerEnv:PATH}"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "moby": false,
+      "azureDnsAutoDetection": false
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "hverlin.mise-vscode",
+        "bradlc.vscode-tailwindcss",
+        "tamasfe.even-better-toml",
+        "docker.docker",
+        "ms-playwright.playwright",
+        "oven.bun-vscode",
+        "oxc.oxc-vscode"
+      ]
+    }
+  },
+  "onCreateCommand": "rm -f .mise-setup-done && mise trust && mise install"
 }
