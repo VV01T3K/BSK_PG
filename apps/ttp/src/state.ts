@@ -1,4 +1,5 @@
 import { createCertificateAuthority } from "@bsk/crypto";
+import { createSecurityLogger } from "@bsk/rpc/log";
 
 import type { IdentityPublicKeys, Role } from "./contract";
 
@@ -38,7 +39,9 @@ export const sessions = new Map<string, SessionRecord>();
 export const sessionsByRequest = new Map<string, string>();
 export const pendingAuths = new Map<string, PendingAuthRecord>();
 
-export function log() {}
+const logger = createSecurityLogger(["application.log", "ttp.log"]);
+
+export const log = logger.log;
 
 export function identityKey(role: Role, subjectId: string): string {
   return `${role}:${subjectId}`;

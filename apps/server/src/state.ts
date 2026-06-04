@@ -1,4 +1,5 @@
 import { type RsaPair } from "@bsk/crypto";
+import { createSecurityLogger, type SecurityLogLevel } from "@bsk/rpc/log";
 
 type ServiceServerState = {
   serverId?: string;
@@ -37,7 +38,11 @@ export type DemoStoredFile = DemoFileMeta & {
   storedAt: string;
 };
 
-export function log() {}
+const logger = createSecurityLogger(["application.log", "server.log"]);
+
+export function log(event: string, details: string, level: SecurityLogLevel = "info") {
+  logger.log("server", event, details, level);
+}
 
 export function resetServiceServerState() {
   state.pendingRequests.clear();
@@ -45,6 +50,7 @@ export function resetServiceServerState() {
     if (key === "pendingRequests") continue;
     delete state[key];
   }
+  logger.reset();
 }
 
 export function readServiceServerStatus(): ServiceServerStatus {
