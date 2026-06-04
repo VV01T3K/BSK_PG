@@ -2,16 +2,24 @@
   "name": "ttp",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./contract": "./src/contract.ts"
   },
   "scripts": {
-    "dev": "bun run --hot src/index.ts"
+    "dev": "bun run --hot src/index.ts",
+    "build": "bun build src/index.ts --target bun --outdir dist",
+    "test": "bun test --pass-with-no-tests --timeout 20000",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "hono": "^4.12.12",
+    "@bsk/crypto": "workspace:*",
+    "@bsk/rpc": "workspace:*",
+    "@orpc/server": "^1.14.4",
     "node-forge": "1.4.0"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/node-forge": "^1.3.14",
+    "typescript": "^6.0.2"
   }
 }
