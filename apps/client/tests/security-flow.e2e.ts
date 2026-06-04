@@ -28,6 +28,14 @@ async function clickButton(page: Page, name: string) {
 const stateValue = (page: Page, label: string) =>
   page.getByText(label, { exact: true }).locator("xpath=following-sibling::span");
 
+/** Pick a service from the "Use service" dropdown (Upload a file / View stored file). */
+async function selectService(page: Page, optionName: string) {
+  const trigger = page.getByRole("combobox");
+  await expect(trigger).toBeEnabled();
+  await trigger.click();
+  await page.getByRole("option", { name: optionName }).click();
+}
+
 async function gotoCleanState(page: Page) {
   await page.goto("/");
   await clickButton(page, "Reset");
@@ -75,20 +83,20 @@ test("completes the register -> authenticate -> file service happy path", async 
   await expect(button(page, "Run test")).toBeEnabled();
 
   await startSession(page);
-  await clickButton(page, "Upload file");
+  await selectService(page, "Upload a file");
   await selectTextFile(page);
 
   await button(page, "Upload selected file").click();
   await expect(stateValue(page, "Service")).toHaveText(/demo\.txt stored, \d+ bytes/);
+  await expect(stateValue(page, "Current server file")).toContainText("Switch to View");
+  await expect(page.getByText("Encrypted payload")).toHaveCount(0);
+
+  await selectService(page, "View stored file");
+  await clickButton(page, "Fetch file from server");
   await expect(stateValue(page, "Current server file")).toContainText("demo.txt");
   await expect(page.getByText("hello from playwright over the encrypted session")).toBeVisible();
-  await expect(page.getByText("Encrypted AES-GCM payload")).toBeVisible();
+  await expect(page.getByText("Encrypted payload")).toBeVisible();
   await expect(page.getByText('"ciphertext"')).toBeVisible();
-
-  await clickButton(page, "View file");
-  await clickButton(page, "View current uploaded file");
-  await expect(stateValue(page, "Current server file")).toContainText("demo.txt");
-  await expect(page.getByText("Encrypted AES-GCM payload")).toBeVisible();
 
   // The destructive error alert must never have rendered during the flow.
   await expect(page.getByRole("alert")).toHaveCount(0);
@@ -122,7 +130,7 @@ test("closes a session without dropping registration", async ({ page }) => {
 test("reset returns every row to its initial value", async ({ page }) => {
   await register(page);
   await startSession(page);
-  await clickButton(page, "Upload file");
+  await selectService(page, "Upload a file");
   await selectTextFile(page);
   await button(page, "Upload selected file").click();
   await expect(stateValue(page, "Service")).toHaveText(/demo\.txt stored, \d+ bytes/);

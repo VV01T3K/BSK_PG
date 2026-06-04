@@ -76,7 +76,6 @@ export async function registerProtectedServer() {
   state.pendingRequests.clear();
   clearLocalSession();
   state.serviceExchanged = undefined;
-  state.latestDemoFile = undefined;
   state.lastServiceEvent = undefined;
 
   return readServiceServerStatus();
@@ -132,6 +131,7 @@ export async function fetchServerSessionKey(input: { requestId: string }) {
 
   state.sessionId = ticket.sessionId;
   state.sessionKey = ticket.sessionKey;
+  state.serviceExchanged = undefined;
   state.pendingRequests.delete(input.requestId);
 
   return readServiceServerStatus();

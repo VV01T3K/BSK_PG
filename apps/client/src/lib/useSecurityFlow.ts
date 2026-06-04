@@ -53,6 +53,7 @@ export function useSecurityFlow() {
   const mutations = [register, authenticate, uploadFile, viewFile, forged, closeSession, reset];
   const server = serverQuery.data;
   const clientStatus = clientStatusQuery.data;
+  const sessionEstablished = Boolean(clientStatus?.sessionId && server?.sessionEstablished);
 
   return {
     clientStatus,
@@ -68,7 +69,7 @@ export function useSecurityFlow() {
     error: mutations.find((mutation) => mutation.error)?.error as Error | undefined,
     serverRegistered: Boolean(server?.registered),
     registrationComplete: Boolean(clientStatus?.userRegistered && server?.registered),
-    sessionEstablished: Boolean(clientStatus?.sessionId && server?.sessionEstablished),
-    serviceExchanged: Boolean(server?.serviceExchanged),
+    sessionEstablished,
+    serviceExchanged: Boolean(server?.serviceExchanged) && sessionEstablished,
   };
 }
