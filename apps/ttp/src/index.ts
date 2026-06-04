@@ -1,34 +1,14 @@
-import { Hono } from "hono";
-import { cors } from "hono/cors";
+import { createRpcFetch } from "@bsk/rpc/server";
 
-const demoProducts = [
-  { id: 1, name: "Keyboard" },
-  { id: 2, name: "Mouse" },
-  { id: 3, name: "Monitor" },
-];
+import { ttpRouter } from "./rpc";
 
-export const app = new Hono()
-  .use(
-    "/api/*",
-    cors({
-      origin: "http://localhost:3000",
-    }),
-  )
-  .get("/", (c) => {
-    return c.text("Hello Hono!");
-  })
-  .get("/api/startup", async (c) => {
-    await new Promise((resolve) => setTimeout(resolve, 2_000)); // wait 2s
+export { ttpRouter } from "./rpc";
+export type { IdentityPublicKeys, UserAuthenticationRequest } from "./contract";
+export type { TtpRouter } from "./rpc";
 
-    return c.json(true); // true -> let through
-  })
-  .get("/api/products", (c) => {
-    return c.json({ products: demoProducts });
-  });
-
-export type TtpApp = typeof app;
+export const fetch = createRpcFetch(ttpRouter, "BSK PG Trusted Third Party");
 
 export default {
   port: 3001,
-  fetch: app.fetch,
+  fetch,
 };

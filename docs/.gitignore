@@ -1,0 +1,4 @@
+# Keep generated documentation out of git, but track project planning/report files.
+doxygen-output/
+html/
+latex/

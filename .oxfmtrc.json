@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "sortImports": true,
+  "sortTailwindcss": {
+    "stylesheet": "apps/client/src/styles.css",
+    "functions": ["cn", "clsx", "twMerge", "cva"]
+  },
+  "sortPackageJson": true,
+  "ignorePatterns": ["**/dist/**", "**/routeTree.gen.ts", "**/.tanstack/**"]
+}
