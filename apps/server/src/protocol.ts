@@ -7,10 +7,12 @@ import {
   type SessionTicket,
 } from "@bsk/crypto";
 import { createRpcClient } from "@bsk/rpc/client";
+import forge from "node-forge";
 import type { TtpRouter } from "ttp";
 import { serverAuthenticationPayload } from "ttp/contract";
 
 import {
+  artifact,
   readServiceServerStatus,
   requireRegisteredServer,
   requireSessionKey,
@@ -46,13 +48,6 @@ type DemoFileEmptyResponse = {
 
 type DemoFileServiceResponse = DemoFileResponse | DemoFileEmptyResponse;
 
-type UploadFileRequest = {
-  kind: "file.upload";
-  name: string;
-  mimeType: string;
-  contentBase64: string;
-};
-
 /**
  * Registers the protected Server with the TTP.
  * @returns Current Server status including its issued certificate.
@@ -81,6 +76,15 @@ export async function registerProtectedServer() {
   clearLocalSession();
   state.serviceExchanged = undefined;
   state.lastServiceEvent = undefined;
+  await Promise.all([
+    artifact("server", `server/certificate-${state.serverId}.pem`, state.certificatePem),
+    artifact("server", `server/certificate-${state.serverId}.json`, {
+      artifact: "server-identity-certificate",
+      serverId: state.serverId,
+      certificate: forge.pki.certificateFromPem(state.certificatePem),
+      certificatePem: state.certificatePem,
+    }),
+  ]);
 
   return readServiceServerStatus();
 }
@@ -101,19 +105,27 @@ export async function requestService(input: { userId: string }) {
     createdAt: new Date().toISOString(),
   });
 
+  const authenticationPayload = serverAuthenticationPayload({
+    serverId,
+    certificatePem,
+    requestId,
+    userId: input.userId,
+  });
+  const signature = rsa.privateKey(state.authKeyPair!.privateKeyPem).sign(authenticationPayload);
+  await artifact("server", `server/authentication/${requestId}.json`, {
+    requestId,
+    serverId,
+    userId: input.userId,
+    authenticationPayload,
+    signature,
+  });
+
   await ttp.auth.server({
     serverId,
     certificatePem,
     requestId,
     userId: input.userId,
-    signature: rsa.privateKey(state.authKeyPair!.privateKeyPem).sign(
-      serverAuthenticationPayload({
-        serverId,
-        certificatePem,
-        requestId,
-        userId: input.userId,
-      }),
-    ),
+    signature,
   });
 
   return {
@@ -137,7 +149,11 @@ export async function fetchServerSessionKey(input: { requestId: string }) {
   }
 
   const response = await ttp.session.serverKey({ requestId: input.requestId });
-  const ticket = decryptSessionTicket(response.encryptedSessionKeyForServer);
+  const ticket = JSON.parse(
+    rsa
+      .privateKey(state.exchangeKeyPair!.privateKeyPem)
+      .decrypt(response.encryptedSessionKeyForServer),
+  ) as SessionTicket;
 
   if (ticket.sessionId !== response.sessionId) {
     throw new Error("session key payload does not match session id");
@@ -182,7 +198,22 @@ export function exchangeProtectedServiceData(payload: SessionEncryptedPayload) {
 
 function handleFileServiceRequest(request: DemoFileServiceRequest): DemoFileServiceResponse {
   if (request.kind === "file.upload") {
-    return uploadFile(request);
+    const response = {
+      kind: "file.current" as const,
+      name: request.name,
+      mimeType: request.mimeType,
+      size: Buffer.from(request.contentBase64, "base64").byteLength,
+      contentBase64: request.contentBase64,
+      storedAt: new Date().toISOString(),
+    };
+
+    state.latestDemoFile = response;
+    state.lastServiceEvent = {
+      event: "demo file uploaded",
+      details: `${response.name} (${response.size} bytes)`,
+    };
+
+    return response;
   }
 
   if (request.kind === "file.view") {
@@ -193,49 +224,18 @@ function handleFileServiceRequest(request: DemoFileServiceRequest): DemoFileServ
         : "no uploaded file",
     };
     return state.latestDemoFile
-      ? currentFileResponse(state.latestDemoFile)
+      ? {
+          kind: "file.current",
+          name: state.latestDemoFile.name,
+          mimeType: state.latestDemoFile.mimeType,
+          size: state.latestDemoFile.size,
+          contentBase64: state.latestDemoFile.contentBase64,
+          storedAt: state.latestDemoFile.storedAt,
+        }
       : { kind: "file.empty" };
   }
 
   throw new Error("unsupported demo file service request");
-}
-
-function uploadFile(request: UploadFileRequest): DemoFileResponse {
-  const storedAt = new Date().toISOString();
-  const size = Buffer.from(request.contentBase64, "base64").byteLength;
-  const response: DemoFileResponse = {
-    kind: "file.current",
-    name: request.name,
-    mimeType: request.mimeType,
-    size,
-    contentBase64: request.contentBase64,
-    storedAt,
-  };
-
-  state.latestDemoFile = response;
-  state.lastServiceEvent = {
-    event: "demo file uploaded",
-    details: `${response.name} (${response.size} bytes)`,
-  };
-
-  return response;
-}
-
-function currentFileResponse(file: {
-  name: string;
-  mimeType: string;
-  size: number;
-  contentBase64: string;
-  storedAt: string;
-}): DemoFileResponse {
-  return {
-    kind: "file.current",
-    name: file.name,
-    mimeType: file.mimeType,
-    size: file.size,
-    contentBase64: file.contentBase64,
-    storedAt: file.storedAt,
-  };
 }
 
 function decodeFileServiceRequest(plaintext: string): DemoFileServiceRequest {
@@ -260,12 +260,6 @@ function decodeFileServiceRequest(plaintext: string): DemoFileServiceRequest {
     mimeType: value.mimeType ?? "application/octet-stream",
     contentBase64: value.contentBase64,
   };
-}
-
-function decryptSessionTicket(encryptedTicket: string): SessionTicket {
-  return JSON.parse(
-    rsa.privateKey(state.exchangeKeyPair!.privateKeyPem).decrypt(encryptedTicket),
-  ) as SessionTicket;
 }
 
 function clearLocalSession() {

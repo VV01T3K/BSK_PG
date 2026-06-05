@@ -17,7 +17,7 @@ import {
   serverSessionKey,
   ttpPublicKeyResponse,
 } from "./protocol";
-import { log } from "./state";
+import { artifact, log } from "./state";
 
 function reject(code: "BAD_REQUEST" | "UNAUTHORIZED" | "NOT_FOUND", error: unknown): never {
   const message = error instanceof Error ? error.message : "Unknown TTP error";
@@ -26,15 +26,15 @@ function reject(code: "BAD_REQUEST" | "UNAUTHORIZED" | "NOT_FOUND", error: unkno
 }
 
 export const ttpRouter = {
-  publicKey: os.handler(() => ({
-    ...ttpPublicKeyResponse(),
+  publicKey: os.handler(async () => ({
+    ...(await ttpPublicKeyResponse()),
     algorithm: "RSA-4096-OAEP-SHA256 + AES-256-GCM",
     keyLength: RSA_BITS,
   })),
 
-  register: os.input(type<RegisterIdentityInput>()).handler(({ input }) => {
+  register: os.input(type<RegisterIdentityInput>()).handler(async ({ input }) => {
     try {
-      const registration = registerIdentity(input);
+      const registration = await registerIdentity(input);
       log(input.role, "registered with TTP", `${input.role}:${registration.subjectId}`);
       return registration;
     } catch (error) {
@@ -43,12 +43,18 @@ export const ttpRouter = {
   }),
 
   auth: {
-    server: os.input(type<ServerAuthenticationInput>()).handler(({ input }) => {
+    server: os.input(type<ServerAuthenticationInput>()).handler(async ({ input }) => {
       try {
         const response = authenticateServerCertificate(input);
         log("server", "server certificate validated", `request ${input.requestId}`);
         return response;
       } catch (error) {
+        await artifact("ttp", `ttp/rejections/server-auth-${input.requestId}.json`, {
+          kind: "server-auth",
+          requestId: input.requestId,
+          rejectedAt: new Date().toISOString(),
+          error: error instanceof Error ? { name: error.name, message: error.message } : error,
+        });
         reject("UNAUTHORIZED", error);
       }
     }),
@@ -67,9 +73,9 @@ export const ttpRouter = {
       }
     }),
 
-    user: os.input(type<UserAuthenticationInput>()).handler(({ input }) => {
+    user: os.input(type<UserAuthenticationInput>()).handler(async ({ input }) => {
       try {
-        const { request, response } = authenticateUserForServer(input);
+        const { request, response } = await authenticateUserForServer(input);
         log(
           "ttp",
           "session key issued",
@@ -77,6 +83,12 @@ export const ttpRouter = {
         );
         return response;
       } catch (error) {
+        await artifact("ttp", "ttp/rejections/user-auth-encrypted-request.json", {
+          kind: "user-auth",
+          requestId: "encrypted-request",
+          rejectedAt: new Date().toISOString(),
+          error: error instanceof Error ? { name: error.name, message: error.message } : error,
+        });
         reject("UNAUTHORIZED", error);
       }
     }),

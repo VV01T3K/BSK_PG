@@ -17,6 +17,10 @@ function logPath(fileName: string) {
   return join(logDirectory(), fileName);
 }
 
+function artifactPath(fileName: string) {
+  return join(logDirectory(), "artifacts", fileName);
+}
+
 export function createSecurityLogger(fileNames: readonly string[]) {
   const paths = fileNames.map(logPath);
   const logger = pino(
@@ -45,6 +49,13 @@ export function createSecurityLogger(fileNames: readonly string[]) {
     logger[level]({ actor, details }, event);
   }
 
+  async function artifact(actor: SecurityLogActor, fileName: string, contents: unknown) {
+    const path = artifactPath(fileName);
+    const body = typeof contents === "string" ? contents : JSON.stringify(contents, null, 2);
+    await Bun.write(path, body);
+    log(actor, "artifact saved", path);
+  }
+
   function reset() {
     logger.flush();
     for (const path of paths) {
@@ -52,5 +63,5 @@ export function createSecurityLogger(fileNames: readonly string[]) {
     }
   }
 
-  return { log, reset, pino: logger };
+  return { log, artifact, reset, pino: logger };
 }

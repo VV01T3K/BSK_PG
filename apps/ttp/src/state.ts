@@ -42,6 +42,7 @@ export const pendingAuths = new Map<string, PendingAuthRecord>();
 const logger = createSecurityLogger(["application.log", "ttp.log"]);
 
 export const log = logger.log;
+export const artifact = logger.artifact;
 
 export function identityKey(role: Role, subjectId: string): string {
   return `${role}:${subjectId}`;

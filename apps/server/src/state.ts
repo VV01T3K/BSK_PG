@@ -44,6 +44,8 @@ export function log(event: string, details: string, level: SecurityLogLevel = "i
   logger.log("server", event, details, level);
 }
 
+export const artifact = logger.artifact;
+
 export function resetServiceServerState() {
   state.pendingRequests.clear();
   for (const key of Object.keys(state) as Array<keyof ServiceServerState>) {

@@ -5,6 +5,7 @@ import {
   verifyCertificateSignedBy,
   type SessionTicket,
 } from "@bsk/crypto";
+import forge from "node-forge";
 
 import {
   serverAuthenticationPayload,
@@ -17,6 +18,7 @@ import {
   type UserAuthRedirectInput,
 } from "./contract";
 import {
+  artifact,
   ca,
   pendingAuths,
   identityKey,
@@ -26,7 +28,22 @@ import {
 } from "./state";
 import type { IdentityRecord, SessionRecord } from "./state";
 
-export function ttpPublicKeyResponse() {
+let authorityArtifactsSaved = false;
+
+export async function ttpPublicKeyResponse() {
+  if (!authorityArtifactsSaved) {
+    authorityArtifactsSaved = true;
+    await Promise.all([
+      artifact("ttp", "ttp/authority.pem", ca.certificatePem),
+      artifact("ttp", "ttp/authority.json", {
+        artifact: "ttp-authority-certificate",
+        certificate: forge.pki.certificateFromPem(ca.certificatePem),
+        certificatePem: ca.certificatePem,
+        publicKeyPem: ca.publicKeyPem,
+      }),
+    ]);
+  }
+
   return {
     publicKeyPem: ca.publicKeyPem,
     certificatePem: ca.certificatePem,
@@ -38,7 +55,7 @@ export function ttpPublicKeyResponse() {
  * @param input Encrypted subject id, role and public keys submitted by the identity.
  * @returns Registered subject id, certificate and issuance timestamp.
  */
-export function registerIdentity(input: RegisterIdentityInput) {
+export async function registerIdentity(input: RegisterIdentityInput) {
   const subjectId = rsa.privateKey(ca.privateKeyPem).decrypt(input.encryptedId);
   const issuedAt = new Date().toISOString();
   const identity = {
@@ -46,7 +63,12 @@ export function registerIdentity(input: RegisterIdentityInput) {
     subjectId,
     publicKeys: input.publicKeys,
   };
-  const certificatePem = issueCertificate(identity);
+  const certificatePem = issueIdentityCertificate({
+    authority: ca,
+    role: identity.role,
+    subjectId: identity.subjectId,
+    publicKeyPem: identity.publicKeys.exchangePublicKeyPem,
+  });
   const record: IdentityRecord = {
     ...identity,
     certificatePem,
@@ -54,6 +76,18 @@ export function registerIdentity(input: RegisterIdentityInput) {
   };
 
   registeredIdentities.set(identityKey(input.role, subjectId), record);
+  await Promise.all([
+    artifact("ttp", `ttp/certificates/${input.role}-${subjectId}.pem`, certificatePem),
+    artifact("ttp", `ttp/certificates/${input.role}-${subjectId}.json`, {
+      artifact: "ttp-issued-identity-certificate",
+      role: input.role,
+      subjectId,
+      issuedAt,
+      certificate: forge.pki.certificateFromPem(certificatePem),
+      certificatePem,
+      publicKeys: input.publicKeys,
+    }),
+  ]);
 
   return {
     subjectId,
@@ -116,8 +150,10 @@ export function requestUserAuthentication(input: UserAuthRedirectInput) {
  * @param input User authentication material encrypted to the TTP.
  * @returns The validated request and encrypted User session ticket.
  */
-export function authenticateUserForServer(input: UserAuthenticationInput) {
-  const request = decryptUserAuthenticationRequest(input.encryptedAuthMaterial);
+export async function authenticateUserForServer(input: UserAuthenticationInput) {
+  const request = JSON.parse(
+    rsa.privateKey(ca.privateKeyPem).decrypt(input.encryptedAuthMaterial),
+  ) as UserAuthenticationRequest;
   const pendingAuth = pendingAuths.get(request.requestId);
 
   if (!pendingAuth) {
@@ -157,6 +193,13 @@ export function authenticateUserForServer(input: UserAuthenticationInput) {
 
   session.encryptedSessionKeyForServer = encryptedSessionKeyForServer;
   pendingAuths.delete(request.requestId);
+  await artifact("ttp", `ttp/session-tickets/${request.requestId}-${session.sessionId}.json`, {
+    requestId: request.requestId,
+    sessionId: session.sessionId,
+    issuedAt: new Date().toISOString(),
+    encryptedSessionKeyForUser,
+    encryptedSessionKeyForServer,
+  });
 
   return {
     request,
@@ -207,14 +250,6 @@ export function closeSession(sessionId: string) {
   return { ok: true, sessionId, closedAt: session.closedAt };
 }
 
-function decryptUserAuthenticationRequest(
-  encryptedAuthMaterial: string,
-): UserAuthenticationRequest {
-  return JSON.parse(
-    rsa.privateKey(ca.privateKeyPem).decrypt(encryptedAuthMaterial),
-  ) as UserAuthenticationRequest;
-}
-
 function createSession(requestId: string, userId: string, serverId: string): SessionRecord {
   const session: SessionRecord = {
     sessionId: random.hex(16),
@@ -239,20 +274,9 @@ function verifyIdentitySignature(identity: IdentityRecord, payload: string, sign
   }
 }
 
-type CertifiableIdentity = Pick<IdentityRecord, "role" | "subjectId" | "publicKeys">;
-
 type CertificateClaim = Pick<IdentityRecord, "role" | "subjectId"> & {
   certificatePem: string;
 };
-
-function issueCertificate(identity: CertifiableIdentity): string {
-  return issueIdentityCertificate({
-    authority: ca,
-    role: identity.role,
-    subjectId: identity.subjectId,
-    publicKeyPem: identity.publicKeys.exchangePublicKeyPem,
-  });
-}
 
 function validateCertificate(claim: CertificateClaim): IdentityRecord {
   const { commonName } = verifyCertificateSignedBy(ca, claim.certificatePem);

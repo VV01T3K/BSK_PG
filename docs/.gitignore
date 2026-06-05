@@ -1,1 +1,2 @@
-generated/
+*
+!doxygen_docs.pdf

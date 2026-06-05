@@ -8,6 +8,7 @@ import {
   type SessionEncryptedPayload,
   type SessionTicket,
 } from "@bsk/crypto";
+import forge from "node-forge";
 import { userAuthenticationPayload } from "ttp/contract";
 
 import { service, ttpProtocol, type UserAuthenticationRequest } from "#/api";
@@ -82,7 +83,16 @@ export const securityFlow = {
     });
 
     const userAuth = await ttpProtocol.authenticateUser(request);
-    const userSession = decryptSessionTicket(user, userAuth.encryptedSessionKeyForUser);
+    const userSession = JSON.parse(
+      rsa
+        .privateKey(user.exchangeKeyPair.privateKeyPem)
+        .decrypt(userAuth.encryptedSessionKeyForUser),
+    ) as SessionTicket;
+    console.info("session-ticket", {
+      sessionId: userAuth.sessionId,
+      decryptedSessionId: userSession.sessionId,
+      encryptedSessionKeyForUser: userAuth.encryptedSessionKeyForUser,
+    });
 
     if (userSession.sessionId !== userAuth.sessionId) {
       throw new Error("TTP returned inconsistent session identifiers");
@@ -118,6 +128,12 @@ export const securityFlow = {
     const serviceRequest = await service.requestService({ userId: user.id });
     await ttpProtocol.requestUserAuthentication(serviceRequest.requestId);
     const forgedCertificatePem = await createRogueUserCertificate(user);
+    console.info("forged-certificate", {
+      userId: user.id,
+      requestId: serviceRequest.requestId,
+      certificate: forge.pki.certificateFromPem(forgedCertificatePem),
+      forgedCertificatePem,
+    });
     const request = createUserAuthenticationRequest(user, server, {
       requestId: serviceRequest.requestId,
       userCertificatePem: forgedCertificatePem,
@@ -126,6 +142,10 @@ export const securityFlow = {
     try {
       await ttpProtocol.authenticateUser(request);
     } catch (error) {
+      console.info("forged-certificate-rejection", {
+        requestId: serviceRequest.requestId,
+        error: error instanceof Error ? { name: error.name, message: error.message } : error,
+      });
       return {
         rejected: true,
         message: error instanceof Error ? error.message : "forged certificate rejected",
@@ -160,6 +180,15 @@ async function registerUserIdentity() {
     authKeyPair,
     exchangeKeyPair,
     certificatePem: registration.certificatePem,
+  });
+  console.info("user-registration", {
+    userId: registration.subjectId,
+    certificate: forge.pki.certificateFromPem(registration.certificatePem),
+    certificatePem: registration.certificatePem,
+    publicKeys: {
+      authPublicKeyPem: authKeyPair.publicKeyPem,
+      exchangePublicKeyPem: exchangeKeyPair.publicKeyPem,
+    },
   });
 }
 
@@ -211,6 +240,13 @@ async function invokeFileService(
     serverResult.kind === "file.current"
       ? { ...serverResult, encryptedPayload: response.payload }
       : serverResult;
+  console.info("protected-service-exchange", {
+    sessionId,
+    requestKind: request.kind,
+    responseKind: result.kind,
+    encryptedRequest,
+    encryptedResponse: response.payload,
+  });
 
   if (
     request.kind === "file.upload" &&
@@ -241,16 +277,18 @@ function createUserAuthenticationRequest(
     requestId: options.requestId,
   };
 
+  const payload = userAuthenticationPayload(request);
+  const signature = rsa.privateKey(user.authKeyPair.privateKeyPem).sign(payload);
+  console.info("user-authentication", {
+    request,
+    userCertificate: forge.pki.certificateFromPem(request.userCertificatePem),
+    serverCertificate: forge.pki.certificateFromPem(request.serverCertificatePem),
+    payload,
+    signature,
+  });
+
   return {
     ...request,
-    signature: rsa
-      .privateKey(user.authKeyPair.privateKeyPem)
-      .sign(userAuthenticationPayload(request)),
+    signature,
   };
-}
-
-function decryptSessionTicket(user: RegisteredUser, encryptedTicket: string): SessionTicket {
-  return JSON.parse(
-    rsa.privateKey(user.exchangeKeyPair.privateKeyPem).decrypt(encryptedTicket),
-  ) as SessionTicket;
 }
