@@ -7,3 +7,18 @@ npm.package_manager = "bun"
 
 [tools]
 bun = "1.3.14"
+"github:doxygen/doxygen" = "Release_1_17_0"
+tinytex = { version = "2026.06", postinstall = '''
+"$MISE_TOOL_INSTALL_PATH"/bin/*/tlmgr install \
+  xltabular \
+  tabularray \
+  ltablex \
+  hanging \
+  stackengine \
+  alphalph \
+  wasy \
+  wasysym \
+  tocloft \
+  newunicodechar \
+  etoc
+''' }
