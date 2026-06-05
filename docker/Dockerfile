@@ -1,4 +1,4 @@
-FROM oven/bun:1.3.12 AS deps
+FROM oven/bun:1.3.14-alpine AS deps
 
 WORKDIR /app
 
@@ -24,7 +24,7 @@ COPY packages ./packages
 
 RUN bun run build
 
-FROM oven/bun:1.3.12 AS client
+FROM oven/bun:1.3.14-alpine AS client
 
 WORKDIR /app
 ENV PORT=3000
@@ -34,7 +34,7 @@ COPY --from=build /app/apps/client/.output ./.output
 EXPOSE 3000
 CMD ["bun", ".output/server/index.mjs"]
 
-FROM oven/bun:1.3.12 AS server
+FROM oven/bun:1.3.14-alpine AS server
 
 WORKDIR /app
 ENV LOG_DIR=/app/logs
@@ -46,7 +46,7 @@ RUN mkdir -p /app/logs
 EXPOSE 3002
 CMD ["bun", "index.js"]
 
-FROM oven/bun:1.3.12 AS ttp
+FROM oven/bun:1.3.14-alpine AS ttp
 
 WORKDIR /app
 ENV LOG_DIR=/app/logs
