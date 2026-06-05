@@ -1,0 +1,32 @@
+PROJECT_NAME           = "BSK PG Trusted Third Party Demo"
+PROJECT_BRIEF          = "Client, Server and TTP authentication demo"
+OUTPUT_DIRECTORY       = docs/generated/doxygen
+
+INPUT                  = apps/ttp/src \
+                         apps/server/src \
+                         apps/client/src \
+                         packages/crypto/src \
+                         packages/rpc/src
+FILE_PATTERNS          = *.ts *.tsx
+RECURSIVE              = YES
+EXCLUDE_PATTERNS       = */tests/* \
+                         */node_modules/* \
+                         */dist/* \
+                         */.output/* \
+                         */routeTree.gen.ts \
+                         */components/ui/* \
+                         */routes/__root.tsx \
+                         */router.tsx \
+                         */src/index.ts \
+                         */public/* \
+                         */logs/*
+
+EXTENSION_MAPPING      = ts=Javascript tsx=Javascript
+
+EXTRACT_ALL            = YES
+EXCLUDE_SYMBOLS        = __pad*__
+JAVADOC_AUTOBRIEF      = YES
+WARN_IF_UNDOCUMENTED   = NO
+
+HAVE_DOT               = NO
+CLASS_GRAPH            = NO

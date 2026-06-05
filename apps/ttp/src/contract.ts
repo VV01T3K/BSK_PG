@@ -42,6 +42,11 @@ export type UserAuthRedirectInput = {
   requestId: string;
 };
 
+/**
+ * Builds the payload signed by the Server.
+ * @param input Server identity, User identity, request id and certificate.
+ * @returns JSON string used for RSA signature verification.
+ */
 export function serverAuthenticationPayload(input: {
   serverId: string;
   certificatePem: string;
@@ -57,6 +62,11 @@ export function serverAuthenticationPayload(input: {
   });
 }
 
+/**
+ * Builds the canonical payload signed by the User.
+ * @param input User, Server, request id and certificate material.
+ * @returns Stable JSON string used before session-key issuance.
+ */
 export function userAuthenticationPayload(input: {
   userId: string;
   userCertificatePem: string;

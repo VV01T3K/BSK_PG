@@ -9,6 +9,11 @@ import type {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Creates the self-signed TTP certificate authority.
+ * @param options Certificate subject and validity settings.
+ * @returns PEM keys and the forge certificate object used for signing identity certificates.
+ */
 export async function createCertificateAuthority(
   options: CertificateAuthorityOptions,
 ): Promise<CertificateAuthority> {
@@ -42,6 +47,11 @@ export async function createCertificateAuthority(
   };
 }
 
+/**
+ * Issues a TTP-signed X.509 identity certificate.
+ * @param input Registered identity, exchange public key and issuing authority.
+ * @returns PEM-encoded X.509 certificate for the User or Server exchange key.
+ */
 export function issueIdentityCertificate(input: IdentityCertificateInput): string {
   const cert = forge.pki.createCertificate();
 
@@ -72,6 +82,12 @@ export function issueIdentityCertificate(input: IdentityCertificateInput): strin
   return forge.pki.certificateToPem(cert);
 }
 
+/**
+ * Verifies that a certificate chains to the trusted TTP authority.
+ * @param authority Trusted TTP certificate authority.
+ * @param certificatePem PEM-encoded certificate to validate.
+ * @returns The validated certificate common name.
+ */
 export function verifyCertificateSignedBy(
   authority: CertificateAuthority,
   certificatePem: string,

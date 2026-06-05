@@ -36,6 +36,14 @@ Build the monorepo:
 bun run build
 ```
 
+Generate Doxygen documentation:
+
+```bash
+bun run docs:pdf
+```
+
+The generated PDF is written to `docs/doxygen_docs.pdf`.
+
 ## Docker Compose Demo
 
 Docker Compose is used as the final VM-like environment:

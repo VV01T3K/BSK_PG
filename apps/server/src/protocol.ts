@@ -53,6 +53,10 @@ type UploadFileRequest = {
   contentBase64: string;
 };
 
+/**
+ * Registers the protected Server with the TTP.
+ * @returns Current Server status including its issued certificate.
+ */
 export async function registerProtectedServer() {
   const serverId = hash.of(`server-${random.uuid()}`).sha256Hex();
   const [ttpPublicKey, authKeyPair, exchangeKeyPair] = await Promise.all([
@@ -81,6 +85,11 @@ export async function registerProtectedServer() {
   return readServiceServerStatus();
 }
 
+/**
+ * Starts a protected service request by authenticating the Server to the TTP.
+ * @param input User id requesting the service.
+ * @returns Request id used for the following User-authentication step.
+ */
 export async function requestService(input: { userId: string }) {
   requireRegisteredServer();
   const serverId = state.serverId!;
@@ -114,6 +123,11 @@ export async function requestService(input: { userId: string }) {
   };
 }
 
+/**
+ * Fetches and decrypts the Server session ticket.
+ * @param input Service request id whose User authentication has completed.
+ * @returns Updated Server status with an active session.
+ */
 export async function fetchServerSessionKey(input: { requestId: string }) {
   requireRegisteredServer();
   const pendingRequest = state.pendingRequests.get(input.requestId);
@@ -137,12 +151,21 @@ export async function fetchServerSessionKey(input: { requestId: string }) {
   return readServiceServerStatus();
 }
 
+/**
+ * Clears the Server's local session state after service completion.
+ * @returns Previous session id and updated Server status.
+ */
 export function closeLocalSession() {
   const closedSession = state.sessionId;
   clearLocalSession();
   return { closedSession, serverStatus: readServiceServerStatus() };
 }
 
+/**
+ * Handles one encrypted protected-service request.
+ * @param payload AES-GCM payload bound to the active session id.
+ * @returns Encrypted service response using the same session key.
+ */
 export function exchangeProtectedServiceData(payload: SessionEncryptedPayload) {
   const sessionKey = requireSessionKey();
   const sessionCipher = aesGcm.withKey(sessionKey).forSession(state.sessionId!);

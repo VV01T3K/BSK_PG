@@ -33,6 +33,11 @@ export function ttpPublicKeyResponse() {
   };
 }
 
+/**
+ * Registers a User or Server and issues its identity certificate.
+ * @param input Encrypted subject id, role and public keys submitted by the identity.
+ * @returns Registered subject id, certificate and issuance timestamp.
+ */
 export function registerIdentity(input: RegisterIdentityInput) {
   const subjectId = rsa.privateKey(ca.privateKeyPem).decrypt(input.encryptedId);
   const issuedAt = new Date().toISOString();
@@ -57,6 +62,11 @@ export function registerIdentity(input: RegisterIdentityInput) {
   };
 }
 
+/**
+ * Validates Server authentication and creates a pending User-auth request.
+ * @param input Server certificate, request id, User id and Server signature.
+ * @returns Server-authentication confirmation for the request.
+ */
 export function authenticateServerCertificate(input: ServerAuthenticationInput) {
   const server = validateCertificate({
     role: "server",
@@ -81,6 +91,11 @@ export function authenticateServerCertificate(input: ServerAuthenticationInput) 
   } as const;
 }
 
+/**
+ * Returns the User-authentication redirect after Server validation.
+ * @param input Service request id.
+ * @returns Redirect metadata telling the Client to submit User authentication.
+ */
 export function requestUserAuthentication(input: UserAuthRedirectInput) {
   const pendingAuth = pendingAuths.get(input.requestId);
 
@@ -96,6 +111,11 @@ export function requestUserAuthentication(input: UserAuthRedirectInput) {
   };
 }
 
+/**
+ * Validates User authentication and issues encrypted session tickets.
+ * @param input User authentication material encrypted to the TTP.
+ * @returns The validated request and encrypted User session ticket.
+ */
 export function authenticateUserForServer(input: UserAuthenticationInput) {
   const request = decryptUserAuthenticationRequest(input.encryptedAuthMaterial);
   const pendingAuth = pendingAuths.get(request.requestId);
@@ -148,6 +168,11 @@ export function authenticateUserForServer(input: UserAuthenticationInput) {
   };
 }
 
+/**
+ * Returns the Server copy of the encrypted session ticket.
+ * @param input Completed service request id.
+ * @returns Session id and ticket encrypted with the Server exchange key.
+ */
 export function serverSessionKey(input: ServerSessionKeyInput) {
   const sessionId = sessionsByRequest.get(input.requestId);
   const session = sessionId ? sessions.get(sessionId) : undefined;
@@ -166,6 +191,11 @@ export function serverSessionKey(input: ServerSessionKeyInput) {
   };
 }
 
+/**
+ * Marks a negotiated session as closed in the TTP state.
+ * @param sessionId Session identifier to close.
+ * @returns Close confirmation with timestamp.
+ */
 export function closeSession(sessionId: string) {
   const session = sessions.get(sessionId);
 

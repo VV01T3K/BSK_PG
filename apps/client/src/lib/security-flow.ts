@@ -55,15 +55,18 @@ export type DemoFileServiceResponse =
     };
 
 export const securityFlow = {
+  /** Clears client state and resets the protected Server demo state. */
   async resetEnvironment() {
     clientSecurityState.reset();
     await service.reset();
   },
 
+  /** Registers the User and protected Server with the TTP. */
   async registerIdentities() {
     await Promise.all([registerUserIdentity(), service.server.register()]);
   },
 
+  /** Runs the Fig. 2 authentication flow and stores the User session key. */
   async authenticateSession() {
     const user = registeredUser();
     const server = await loadRegisteredServer();
@@ -93,6 +96,7 @@ export const securityFlow = {
     });
   },
 
+  /** Uploads a demo file through the encrypted User-Server session channel. */
   uploadDemoFile(input: DemoFileTransferInput) {
     return invokeFileService({
       kind: "file.upload",
@@ -102,10 +106,12 @@ export const securityFlow = {
     });
   },
 
+  /** Reads the latest demo file through the encrypted session channel. */
   viewDemoFile() {
     return invokeFileService({ kind: "file.view" });
   },
 
+  /** Submits a rogue-CA certificate for the correct User identity. */
   async verifyForgedCertificateIsRejected() {
     const user = registeredUser();
     const server = await loadRegisteredServer();
@@ -129,6 +135,7 @@ export const securityFlow = {
     throw new Error("forged certificate was unexpectedly accepted");
   },
 
+  /** Closes the active session through TTP, Server and client-local state. */
   async closeSession() {
     const session = activeSession();
     await ttpProtocol.closeSession(session.sessionId);

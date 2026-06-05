@@ -9,10 +9,13 @@ import type {
   RsaPair,
 } from "./types";
 
+/** RSA modulus size required by the project specification. */
 export const RSA_BITS = 4096;
 
+/** AES-GCM tag length used for authenticated session payloads. */
 const AES_GCM_TAG_BITS = 128;
 const AES_GCM_IV_BYTES = 12;
+/** AES-256 session key length in bytes. */
 const AES_256_KEY_BYTES = 32;
 
 function rsaOaepSha256() {
@@ -52,6 +55,7 @@ function derToPem(label: "PUBLIC KEY" | "PRIVATE KEY", der: ArrayBuffer): string
 }
 
 export const hash = {
+  /** Creates SHA-256 identifiers and short fingerprints for certificates or UI evidence. */
   of(value: string) {
     const sha256Hex = () => {
       const digest = forge.md.sha256.create();
@@ -71,6 +75,7 @@ export const hash = {
 };
 
 export const random = {
+  /** Returns cryptographically strong random bytes encoded as hexadecimal. */
   hex(bytes: number): string {
     const value = forge.random.getBytesSync(bytes);
     return forge.util.bytesToHex(value);
@@ -80,6 +85,7 @@ export const random = {
     return crypto.randomUUID();
   },
 
+  /** Generates the AES-256 session key shared by User and Server. */
   sessionKey(): string {
     const key = forge.random.getBytesSync(AES_256_KEY_BYTES);
     return forge.util.encode64(key);
@@ -87,6 +93,7 @@ export const random = {
 };
 
 export const signedPayload = {
+  /** Standardized signed fields so both sides verify identical authentication claims. */
   from(fields: Record<string, string>): string {
     const sortedFields = Object.fromEntries(
       Object.entries(fields).sort(([left], [right]) => left.localeCompare(right)),
@@ -96,6 +103,7 @@ export const signedPayload = {
 };
 
 export const aesGcm = {
+  /** Builds AES-256-GCM helpers for a base64 session key. */
   withKey(sessionKey: string) {
     const encrypt = (plaintext: string, additionalData?: string): AesGcmPayload => {
       const iv = forge.random.getBytesSync(AES_GCM_IV_BYTES);
@@ -150,6 +158,7 @@ export const aesGcm = {
 };
 
 export const rsa = {
+  /** Generates a 4096-bit RSA key pair and exports it as PEM for forge compatibility. */
   async generatePair(): Promise<RsaPair> {
     const pair = await crypto.subtle.generateKey(
       {
@@ -172,6 +181,7 @@ export const rsa = {
     };
   },
 
+  /** Loads a PEM public key for hybrid encryption and signature verification. */
   publicKey(publicKeyPem: string): RsaEncryptor {
     const publicKey = forge.pki.publicKeyFromPem(publicKeyPem);
 
@@ -197,6 +207,7 @@ export const rsa = {
     };
   },
 
+  /** Loads a PEM private key for hybrid decryption and signing. */
   privateKey(privateKeyPem: string): RsaDecryptor {
     const privateKey = forge.pki.privateKeyFromPem(privateKeyPem);
 

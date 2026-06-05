@@ -16,6 +16,8 @@
     "lint:fix": "oxlint --fix",
     "format": "oxfmt --write",
     "format:check": "oxfmt --check",
+    "docs:doxygen": "mkdir -p docs/generated/doxygen && doxygen Doxyfile",
+    "docs:pdf": "bun run docs:doxygen && make -C docs/generated/doxygen/latex && mv docs/generated/doxygen/latex/refman.pdf docs/doxygen_docs.pdf",
     "ready": "bun run lint && bun run format:check && bun run typecheck && bun run test && bun run build"
   },
   "devDependencies": {

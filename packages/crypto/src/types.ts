@@ -10,7 +10,7 @@ export type RsaPair = {
 };
 
 export interface RsaEncryptor {
-  /** Hybrid public-key encryption: RSA-OAEP(SHA-256)-wrapped AES-256-GCM payload. */
+  /** Hybrid public-key encryption using RSA-OAEP(SHA-256)-wrapped AES-256-GCM. */
   encrypt(plaintext: string): string;
   /** Verifies a base64 RSA/SHA-256 signature for the given plaintext. */
   verify(plaintext: string, signatureBase64: string): boolean;
