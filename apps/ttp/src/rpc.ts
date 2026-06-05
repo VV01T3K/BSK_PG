@@ -26,13 +26,17 @@ function reject(code: "BAD_REQUEST" | "UNAUTHORIZED" | "NOT_FOUND", error: unkno
 }
 
 export const ttpRouter = {
-  publicKey: os.handler(async () => ({
-    ...(await ttpPublicKeyResponse()),
-    algorithm: "RSA-4096-OAEP-SHA256 + AES-256-GCM",
-    keyLength: RSA_BITS,
-  })),
+  publicKey: os.handler(async () => {
+    log("ttp", "public key requested", "authority public key");
+    return {
+      ...(await ttpPublicKeyResponse()),
+      algorithm: "RSA-4096-OAEP-SHA256 + AES-256-GCM",
+      keyLength: RSA_BITS,
+    };
+  }),
 
   register: os.input(type<RegisterIdentityInput>()).handler(async ({ input }) => {
+    log(input.role, "registration request received", `${input.role} encrypted id`);
     try {
       const registration = await registerIdentity(input);
       log(input.role, "registered with TTP", `${input.role}:${registration.subjectId}`);
@@ -44,6 +48,11 @@ export const ttpRouter = {
 
   auth: {
     server: os.input(type<ServerAuthenticationInput>()).handler(async ({ input }) => {
+      log(
+        "server",
+        "server authentication request received",
+        `request ${input.requestId} for user ${input.userId}`,
+      );
       try {
         const response = authenticateServerCertificate(input);
         log("server", "server certificate validated", `request ${input.requestId}`);
@@ -60,6 +69,7 @@ export const ttpRouter = {
     }),
 
     redirect: os.input(type<UserAuthRedirectInput>()).handler(({ input }) => {
+      log("ttp", "user authentication redirect requested", `request ${input.requestId}`);
       try {
         const response = requestUserAuthentication(input);
         log(
@@ -74,6 +84,11 @@ export const ttpRouter = {
     }),
 
     user: os.input(type<UserAuthenticationInput>()).handler(async ({ input }) => {
+      log(
+        "user",
+        "user authentication request received",
+        `encrypted material ${input.encryptedAuthMaterial.length} chars`,
+      );
       try {
         const { request, response } = await authenticateUserForServer(input);
         log(
@@ -96,6 +111,7 @@ export const ttpRouter = {
 
   session: {
     serverKey: os.input(type<ServerSessionKeyInput>()).handler(({ input }) => {
+      log("server", "server session key request received", `request ${input.requestId}`);
       try {
         const response = serverSessionKey(input);
         log("ttp", "server session key fetched", `request ${input.requestId}`);
@@ -106,6 +122,7 @@ export const ttpRouter = {
     }),
 
     close: os.input(type<{ sessionId: string }>()).handler(({ input }) => {
+      log("ttp", "session close requested", input.sessionId);
       try {
         const response = closeSession(input.sessionId);
         log("ttp", "session closed", input.sessionId);

@@ -21,6 +21,7 @@ export const serviceRouter = {
   state: os.handler(() => readServiceServerStatus()),
 
   requestService: os.input(type<{ userId: string }>()).handler(async ({ input }) => {
+    log("service request received", `user ${input.userId}`);
     try {
       const response = await requestService(input);
       log("service requested", `request ${response.requestId} for user ${input.userId}`);
@@ -32,12 +33,14 @@ export const serviceRouter = {
 
   reset: os.handler(() => {
     resetServiceServerState();
+    log("reset requested", "clearing protected service server state");
     log("server reset", "cleared protected service server state");
     return readServiceServerStatus();
   }),
 
   server: {
     register: os.handler(async (): Promise<ServiceServerStatus> => {
+      log("server registration requested", "registering with TTP");
       try {
         const server = await registerProtectedServer();
         log("registered with TTP", `server ${server.serverId}`);
@@ -48,6 +51,7 @@ export const serviceRouter = {
     }),
 
     fetchKey: os.input(type<{ requestId: string }>()).handler(async ({ input }) => {
+      log("session key fetch requested", `request ${input.requestId}`);
       try {
         const server = await fetchServerSessionKey(input);
         log("session key fetched from TTP", `request ${input.requestId}`);
@@ -58,6 +62,7 @@ export const serviceRouter = {
     }),
 
     closeSession: os.handler(() => {
+      log("session close requested", state.sessionId ?? "no active session");
       const { closedSession, serverStatus } = closeLocalSession();
       log("session closed locally", closedSession ?? "no active session");
       return serverStatus;
@@ -66,6 +71,7 @@ export const serviceRouter = {
 
   service: {
     exchange: os.input(type<{ payload: SessionEncryptedPayload }>()).handler(({ input }) => {
+      log("protected service request received", `session ${input.payload.sessionId}`);
       try {
         const response = exchangeProtectedServiceData(input.payload);
         const event = state.lastServiceEvent;
