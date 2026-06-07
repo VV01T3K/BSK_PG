@@ -1,5 +1,5 @@
-import { truncateSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 import pino from "pino";
 import pretty from "pino-pretty";
@@ -7,7 +7,7 @@ import pretty from "pino-pretty";
 export type SecurityLogActor = "ttp" | "user" | "server";
 export type SecurityLogLevel = "info" | "warn" | "error";
 
-const DEFAULT_LOG_DIR = "../../logs";
+const DEFAULT_LOG_DIR = join(import.meta.dir, "../../../logs");
 
 function logDirectory() {
   return process.env.LOG_DIR ?? DEFAULT_LOG_DIR;
@@ -19,6 +19,10 @@ function logPath(fileName: string) {
 
 function artifactPath(fileName: string) {
   return join(logDirectory(), "artifacts", fileName);
+}
+
+function ensureParentDirectory(path: string) {
+  mkdirSync(dirname(path), { recursive: true });
 }
 
 export function createSecurityLogger(fileNames: readonly string[]) {
@@ -52,6 +56,7 @@ export function createSecurityLogger(fileNames: readonly string[]) {
   async function artifact(actor: SecurityLogActor, fileName: string, contents: unknown) {
     const path = artifactPath(fileName);
     const body = typeof contents === "string" ? contents : JSON.stringify(contents, null, 2);
+    ensureParentDirectory(path);
     await Bun.write(path, body);
     log(actor, "artifact saved", path);
   }
@@ -59,7 +64,8 @@ export function createSecurityLogger(fileNames: readonly string[]) {
   function reset() {
     logger.flush();
     for (const path of paths) {
-      truncateSync(path);
+      ensureParentDirectory(path);
+      writeFileSync(path, "");
     }
   }
 
